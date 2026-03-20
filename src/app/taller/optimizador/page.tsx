@@ -441,11 +441,11 @@ export default function OptimizadorPage() {
     setLoadingFuentes(true)
 
     // Get unique material types from selected conceptos
-    const materiales = [
-      ...new Set(
+    const materiales = Array.from(
+      new Set(
         conceptos.filter((c) => c.selected).map((c) => c.concepto.material_tipo)
-      ),
-    ]
+      )
+    )
 
     // Load matching sobrantes
     const { data: sobrantesData } = await supabase
