@@ -9,6 +9,9 @@ import {
   Warehouse,
   ShoppingCart,
   PackageSearch,
+  BoxSelect,
+  Scissors,
+  BarChart3,
   ChevronLeft,
   ChevronRight,
   Bell,
@@ -21,6 +24,9 @@ const sidebarLinks = [
   { href: "/admin/almacen", label: "Almacén", icon: Warehouse },
   { href: "/admin/compras", label: "Compras", icon: ShoppingCart },
   { href: "/admin/inventario", label: "Inventario", icon: PackageSearch },
+  { href: "/admin/sobrantes", label: "Sobrantes", icon: BoxSelect },
+  { href: "/admin/optimizador", label: "Optimizador", icon: Scissors },
+  { href: "/admin/reportes-corte", label: "Reportes Corte", icon: BarChart3 },
 ]
 
 export default function AdminLayout({

@@ -281,6 +281,82 @@ export interface AuditLog {
   created_at: string;
 }
 
+// ============ CUTTING PLAN TYPES ============
+export type PlanCorteEstatus = 'borrador' | 'aprobado' | 'ejecutado' | 'cancelado';
+export type TipoFuente = 'lamina' | 'sobrante';
+
+export interface PlanCorte {
+  id: string;
+  obra_id: string | null;
+  creado_por: string;
+  aprobado_por: string | null;
+  estatus: PlanCorteEstatus;
+  total_piezas: number;
+  total_laminas_usadas: number;
+  total_sobrantes_usados: number;
+  total_sobrantes_generados: number;
+  porcentaje_aprovechamiento: number;
+  area_total_material: number;
+  area_total_piezas: number;
+  area_total_desperdicio: number;
+  notas: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  obra?: Obra;
+  creador?: User;
+  aprobador?: User;
+  fuentes?: PlanCorteFuente[];
+}
+
+export interface PlanCorteFuente {
+  id: string;
+  plan_id: string;
+  tipo_fuente: TipoFuente;
+  lamina_id: string | null;
+  desperdicio_id: string | null;
+  largo_cm: number;
+  ancho_cm: number;
+  area_total: number;
+  area_usada: number;
+  area_sobrante: number;
+  porcentaje_uso: number;
+  // Joined
+  plan?: PlanCorte;
+  lamina?: Lamina;
+  desperdicio?: Desperdicio;
+  piezas?: PlanCortePieza[];
+  sobrantes_generados?: PlanCorteSobranteGenerado[];
+}
+
+export interface PlanCortePieza {
+  id: string;
+  fuente_id: string;
+  concepto_id: string | null;
+  label: string;
+  largo_cm: number;
+  ancho_cm: number;
+  pos_x: number;
+  pos_y: number;
+  rotada: boolean;
+  // Joined
+  fuente?: PlanCorteFuente;
+  concepto?: ConceptoObra;
+}
+
+export interface PlanCorteSobranteGenerado {
+  id: string;
+  fuente_id: string;
+  largo_cm: number;
+  ancho_cm: number;
+  pos_x: number;
+  pos_y: number;
+  desperdicio_generado_id: string | null;
+  // Joined
+  fuente?: PlanCorteFuente;
+  desperdicio_generado?: Desperdicio;
+}
+
 // ============ ROLE CONFIG ============
 export const ROLE_CONFIG: Record<UserRole, { label: string; home: string; prefix: string }> = {
   director: { label: 'Director', home: '/director/dashboard', prefix: '/director' },
