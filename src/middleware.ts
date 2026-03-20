@@ -1,7 +1,6 @@
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
 
-// Role to home page mapping
 const ROLE_HOME: Record<string, string> = {
   director: '/director/dashboard',
   admin: '/admin/dashboard',
@@ -12,7 +11,6 @@ const ROLE_HOME: Record<string, string> = {
   marmolero: '/marmolero/asistencia',
 };
 
-// Route prefix to required role
 const ROUTE_ROLE_MAP: Record<string, string> = {
   '/director': 'director',
   '/admin': 'admin',
@@ -23,12 +21,9 @@ const ROUTE_ROLE_MAP: Record<string, string> = {
   '/marmolero': 'marmolero',
 };
 
-const PUBLIC_ROUTES = ['/login', '/reset-password'];
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip static files
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -37,44 +32,41 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  let response = NextResponse.next({ request: { headers: request.headers } });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        getAll() {
-          return request.cookies.getAll();
+        get(name: string) {
+          return request.cookies.get(name)?.value;
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
+        set(name: string, value: string, options: CookieOptions) {
+          request.cookies.set({ name, value, ...options });
+          response = NextResponse.next({ request: { headers: request.headers } });
+          response.cookies.set({ name, value, ...options });
+        },
+        remove(name: string, options: CookieOptions) {
+          request.cookies.set({ name, value: '', ...options });
+          response = NextResponse.next({ request: { headers: request.headers } });
+          response.cookies.set({ name, value: '', ...options });
         },
       },
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  // No user → allow public routes, redirect others to login
+  // Not logged in
   if (!user) {
-    if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
-      return supabaseResponse;
+    if (pathname === '/login' || pathname === '/reset-password') {
+      return response;
     }
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL('/login', request.url));
   }
 
-  // User logged in → get role
+  // Logged in, on login or root → redirect to role home
   if (pathname === '/login' || pathname === '/') {
     const { data: userData } = await supabase
       .from('users')
@@ -84,19 +76,14 @@ export async function middleware(request: NextRequest) {
 
     if (!userData || !userData.activo) {
       await supabase.auth.signOut();
-      const url = request.nextUrl.clone();
-      url.pathname = '/login';
-      url.searchParams.set('error', 'Cuenta desactivada');
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL('/login?error=Cuenta+desactivada', request.url));
     }
 
     const home = ROLE_HOME[userData.role] || '/login';
-    const url = request.nextUrl.clone();
-    url.pathname = home;
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL(home, request.url));
   }
 
-  // Check role-based access
+  // Check role access on protected routes
   for (const [prefix, requiredRole] of Object.entries(ROUTE_ROLE_MAP)) {
     if (pathname.startsWith(prefix)) {
       const { data: userData } = await supabase
@@ -107,33 +94,22 @@ export async function middleware(request: NextRequest) {
 
       if (!userData || !userData.activo) {
         await supabase.auth.signOut();
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        return NextResponse.redirect(url);
+        return NextResponse.redirect(new URL('/login', request.url));
       }
 
-      // Director has access to everything
-      if (userData.role === 'director') {
-        return supabaseResponse;
-      }
+      if (userData.role === 'director') return response;
 
-      // Wrong role → redirect to own home
       if (userData.role !== requiredRole) {
         const home = ROLE_HOME[userData.role] || '/login';
-        const url = request.nextUrl.clone();
-        url.pathname = home;
-        return NextResponse.redirect(url);
+        return NextResponse.redirect(new URL(home, request.url));
       }
-
       break;
     }
   }
 
-  return supabaseResponse;
+  return response;
 }
 
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };
