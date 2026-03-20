@@ -60,7 +60,7 @@ export async function middleware(request: NextRequest) {
 
   // Not logged in
   if (!user) {
-    if (pathname === '/login' || pathname === '/reset-password') {
+    if (pathname === '/login' || pathname === '/reset-password' || pathname === '/registro') {
       return response;
     }
     return NextResponse.redirect(new URL('/login', request.url));

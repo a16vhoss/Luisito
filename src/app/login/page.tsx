@@ -224,8 +224,19 @@ export default function LoginPage() {
           </Button>
         </form>
 
+        {/* Create Account */}
+        <div className="mt-6 text-center text-xs">
+          <span className="text-marble-500">¿No tiene una cuenta? </span>
+          <a
+            href="/registro"
+            className="font-medium text-golden transition-colors hover:text-golden-light"
+          >
+            Crear Cuenta
+          </a>
+        </div>
+
         {/* Links */}
-        <div className="mt-6 flex items-center justify-between text-xs">
+        <div className="mt-4 flex items-center justify-between text-xs">
           <a
             href="/reset-password"
             className="text-marble-500 transition-colors hover:text-golden"
