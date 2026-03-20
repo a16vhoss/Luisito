@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServiceRoleClient } from '@/lib/supabase/server';
-import { createClient } from '@supabase/supabase-js';
 
 const VALID_ROLES = ['director', 'jefe_taller', 'chofer', 'residente', 'marmolero'] as const;
 
