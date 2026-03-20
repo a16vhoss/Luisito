@@ -8,6 +8,7 @@ import {
   Plus,
   ClipboardList,
   Users,
+  Scissors,
   ChevronRight,
   Clock,
   Package,
@@ -113,25 +114,34 @@ export default function TallerDashboardPage() {
           <ChevronRight className="h-5 w-5 text-marble-600" />
         </Link>
 
-        {/* Two Action Cards */}
-        <div className="mt-4 grid grid-cols-2 gap-3">
+        {/* Action Cards */}
+        <div className="mt-4 grid grid-cols-3 gap-3">
           <Link
             href="/taller/salidas"
-            className="flex flex-col items-center gap-2 rounded-2xl border border-marble-200 bg-white p-5 shadow-sm active:bg-marble-50 transition-colors"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-marble-200 bg-white p-4 shadow-sm active:bg-marble-50 transition-colors"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-marble-100">
               <ClipboardList className="h-6 w-6 text-marble-700" />
             </div>
-            <p className="text-xs font-semibold text-marble-700">SALIDA MATERIAL</p>
+            <p className="text-[10px] font-semibold text-marble-700">SALIDA MAT.</p>
+          </Link>
+          <Link
+            href="/taller/desperdicios"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-marble-200 bg-white p-4 shadow-sm active:bg-marble-50 transition-colors"
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-golden/10">
+              <Scissors className="h-6 w-6 text-golden" />
+            </div>
+            <p className="text-[10px] font-semibold text-marble-700">RETAZOS</p>
           </Link>
           <Link
             href="/taller/personal"
-            className="flex flex-col items-center gap-2 rounded-2xl border border-marble-200 bg-white p-5 shadow-sm active:bg-marble-50 transition-colors"
+            className="flex flex-col items-center gap-2 rounded-2xl border border-marble-200 bg-white p-4 shadow-sm active:bg-marble-50 transition-colors"
           >
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-marble-100">
               <Users className="h-6 w-6 text-marble-700" />
             </div>
-            <p className="text-xs font-semibold text-marble-700">PERSONAL PLANTA</p>
+            <p className="text-[10px] font-semibold text-marble-700">PERSONAL</p>
           </Link>
         </div>
 

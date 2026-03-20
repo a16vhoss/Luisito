@@ -9,11 +9,13 @@ import {
   Wrench,
   PackageCheck,
   UserCircle,
+  Scissors,
 } from "lucide-react"
 
 const bottomNavLinks = [
   { href: "/taller/dashboard", label: "Operaciones", icon: LayoutDashboard },
   { href: "/taller/remisiones", label: "Remisiones", icon: Wrench },
+  { href: "/taller/desperdicios", label: "Retazos", icon: Scissors },
   { href: "/taller/salidas", label: "Salidas", icon: PackageCheck },
   { href: "/taller/personal", label: "Personal", icon: UserCircle },
 ]
