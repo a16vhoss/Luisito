@@ -254,6 +254,8 @@ export interface Desperdicio {
   foto_url: string | null;
   disponible: boolean;
   usado_en_pieza_id: string | null;
+  lamina_id: string | null;
+  notas: string | null;
   created_at: string;
 }
 
