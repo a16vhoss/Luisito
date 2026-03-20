@@ -8,7 +8,6 @@ import {
   Download,
   CheckCircle2,
   Clock,
-  Scissors,
   Layers,
   RotateCcw,
   Package,
@@ -17,7 +16,6 @@ import {
   FileText,
   Loader2,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 // ── Types ──
 type PlacedPiece = {

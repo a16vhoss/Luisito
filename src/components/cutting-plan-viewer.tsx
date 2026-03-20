@@ -73,12 +73,6 @@ function getPieceColor(index: number) {
   return PIECE_COLORS[index % PIECE_COLORS.length];
 }
 
-function getUsageColor(pct: number): string {
-  if (pct >= 80) return '#22c55e';
-  if (pct >= 60) return '#f59e0b';
-  return '#ef4444';
-}
-
 function getUsageBgClass(pct: number): string {
   if (pct >= 80) return 'bg-green-500';
   if (pct >= 60) return 'bg-amber-500';
@@ -111,7 +105,7 @@ export function CuttingPlanViewer({
 
   const colorMap = useMemo(() => {
     const map: Record<string, (typeof PIECE_COLORS)[0]> = {};
-    piezas.forEach((p, i) => {
+    piezas.forEach((p) => {
       if (!map[p.id]) {
         map[p.id] = getPieceColor(Object.keys(map).length);
       }

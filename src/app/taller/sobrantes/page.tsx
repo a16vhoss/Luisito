@@ -1,12 +1,11 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   ArrowLeft,
   Plus,
   Search,
-  Filter,
   Pencil,
   Trash2,
   CheckCircle2,
@@ -40,11 +39,7 @@ export default function SobrantesPage() {
 
   const supabase = createClient()
 
-  useEffect(() => {
-    fetchSobrantes()
-  }, [])
-
-  async function fetchSobrantes() {
+  const fetchSobrantes = useCallback(async function fetchSobrantes() {
     setLoading(true)
     const { data, error } = await supabase
       .from("desperdicios")
@@ -55,7 +50,12 @@ export default function SobrantesPage() {
       setSobrantes(data as Desperdicio[])
     }
     setLoading(false)
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase])
+
+  useEffect(() => {
+    fetchSobrantes()
+  }, [fetchSobrantes])
 
   async function handleMarkAsUsed(id: string) {
     const { error } = await supabase
@@ -231,6 +231,7 @@ export default function SobrantesPage() {
                   {/* Photo thumbnail */}
                   <div className="flex h-24 items-center justify-center bg-marble-100">
                     {sobrante.foto_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         src={sobrante.foto_url}
                         alt="Sobrante"

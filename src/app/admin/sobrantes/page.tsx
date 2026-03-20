@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import {
   Plus,
@@ -13,11 +13,7 @@ import {
   Package,
   Recycle,
   Layers,
-  Filter,
-  ChevronDown,
-  Calendar,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 import type { Desperdicio } from "@/types/database.types"
 
 // ── Mock data for initial development ──
@@ -77,7 +73,7 @@ export default function SobrantesPage() {
 
   // Filter
   const filtered = useMemo(() => {
-    let result = sobrantes.filter((s) => {
+    const result = sobrantes.filter((s) => {
       if (filterMaterial !== "todos" && s.tipo_material !== filterMaterial) return false
       if (filterCalidad !== "todos" && s.calidad !== filterCalidad) return false
       if (filterDisponible === "disponible" && !s.disponible) return false

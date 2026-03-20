@@ -1,7 +1,7 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
-import { useRouter, useParams } from "next/navigation"
+import React, { useState, useEffect, useCallback } from "react"
+import { useParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   XCircle,
   Scissors,
-  Ruler,
   Clock,
   Play,
   AlertTriangle,
@@ -108,7 +107,7 @@ function CuttingPlanViewer({
             </text>
           </g>
         ))}
-        {sobrantes.map((s, i) => (
+        {sobrantes.map((s) => (
           <rect
             key={s.id}
             x={s.pos_x * scale}
@@ -129,7 +128,6 @@ function CuttingPlanViewer({
 }
 
 export default function PlanCorteDetailPage() {
-  const router = useRouter()
   const params = useParams()
   const planId = params.id as string
   const { toast } = useToast()
@@ -145,11 +143,7 @@ export default function PlanCorteDetailPage() {
     })[]
   >([])
 
-  useEffect(() => {
-    loadPlan()
-  }, [planId])
-
-  async function loadPlan() {
+  const loadPlan = useCallback(async function loadPlan() {
     setLoading(true)
 
     // Load plan
@@ -198,7 +192,12 @@ export default function PlanCorteDetailPage() {
     }
 
     setLoading(false)
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planId, supabase])
+
+  useEffect(() => {
+    loadPlan()
+  }, [loadPlan])
 
   async function handleApprove() {
     if (!plan) return

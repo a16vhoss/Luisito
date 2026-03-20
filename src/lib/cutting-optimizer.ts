@@ -316,7 +316,8 @@ function empaquetarEnFuente(
 function encontrarMejorColocacion(
   pieza: PiezaRequerida,
   rectangulosLibres: RectanguloLibre[],
-  cfg: OptimizerConfig,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _cfg: OptimizerConfig,
 ): ColocacionCandidata | null {
   let mejor: ColocacionCandidata | null = null;
 

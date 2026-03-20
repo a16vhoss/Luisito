@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect, useMemo } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -8,13 +8,11 @@ import { Label } from "@/components/ui/label"
 import {
   ArrowLeft,
   ChevronDown,
-  ChevronRight,
   Check,
   Scissors,
   Package,
   Layers,
   Ruler,
-  Zap,
   CheckCircle2,
   XCircle,
   ArrowRight,
@@ -119,7 +117,6 @@ function optimizarCorte(
       // Find next available position
       let posX = 0
       let posY = 0
-      let shelfHeight = 0
       let canPlace = false
       let rotada = false
 
@@ -405,18 +402,19 @@ export default function OptimizadorPage() {
   const [resultado, setResultado] = useState<ResultadoOptimizacion | null>(null)
 
   // Load obras on mount
-  useEffect(() => {
-    loadObras()
-  }, [])
-
-  async function loadObras() {
+  const loadObras = useCallback(async function loadObras() {
     const { data } = await supabase
       .from("obras")
       .select("*")
       .eq("estatus", "activa")
       .order("nombre")
     if (data) setObras(data as Obra[])
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase])
+
+  useEffect(() => {
+    loadObras()
+  }, [loadObras])
 
   async function loadConceptos(obraId: string) {
     setLoadingConceptos(true)

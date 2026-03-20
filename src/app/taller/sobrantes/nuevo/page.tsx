@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -14,7 +14,6 @@ import {
   Camera,
   FileText,
   Save,
-  ChevronDown,
   Star,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
@@ -49,13 +48,7 @@ export default function NuevoSobrantePage() {
   const [notas, setNotas] = useState("")
 
   // Load existing sobrante if editing
-  useEffect(() => {
-    if (editId) {
-      loadSobrante(editId)
-    }
-  }, [editId])
-
-  async function loadSobrante(id: string) {
+  const loadSobrante = useCallback(async function loadSobrante(id: string) {
     setLoadingData(true)
     const { data, error } = await supabase
       .from("desperdicios")
@@ -75,7 +68,14 @@ export default function NuevoSobrantePage() {
       setNotas("")
     }
     setLoadingData(false)
-  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supabase])
+
+  useEffect(() => {
+    if (editId) {
+      loadSobrante(editId)
+    }
+  }, [editId, loadSobrante])
 
   async function handleSave() {
     // Validate

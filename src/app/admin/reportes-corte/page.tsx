@@ -1,19 +1,14 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
 import {
   Package,
   Recycle,
   TrendingUp,
   DollarSign,
-  Scissors,
-  Clock,
   AlertTriangle,
-  Calendar,
   Eye,
 } from "lucide-react"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
 
 // ── Mock data ──
 const mockKpis = {
@@ -210,8 +205,6 @@ function PieChart({ data, size = 160 }: { data: { label: string; value: number; 
 }
 
 function HorizontalBarSimple({ data }: { data: { label: string; value: number }[] }) {
-  const maxVal = 100
-
   return (
     <div className="space-y-3">
       {data.map((d, i) => (

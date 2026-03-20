@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import {
   ArrowRight,
@@ -16,9 +16,7 @@ import {
   RotateCcw,
   Save,
   ClipboardList,
-  Calendar,
 } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
 
 // ── Types ──
 type PiezaInput = {
