@@ -59,7 +59,7 @@ export default function SobrantesPage() {
 
   // Unique material types for filter
   const materialTypes = useMemo(
-    () => [...new Set(sobrantes.map((s) => s.tipo_material))].sort(),
+    () => Array.from(new Set(sobrantes.map((s) => s.tipo_material))).sort(),
     [sobrantes]
   )
 
