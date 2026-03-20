@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
 import type { UserRole } from '@/types/database.types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -78,42 +77,22 @@ export default function RegistroPage() {
     setIsLoading(true);
 
     try {
-      const supabase = createClient();
-
-      // 1. Create auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
+      const res = await fetch('/api/registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          email,
+          telefono: telefono.trim() || null,
+          password,
+          role: selectedRole,
+        }),
       });
 
-      if (authError) {
-        if (authError.message.includes('already registered')) {
-          setError('Este correo electrónico ya está registrado.');
-        } else {
-          setError(authError.message);
-        }
-        setIsLoading(false);
-        return;
-      }
+      const data = await res.json();
 
-      if (!authData.user) {
-        setError('No se pudo crear la cuenta. Intente de nuevo.');
-        setIsLoading(false);
-        return;
-      }
-
-      // 2. Create user profile in users table
-      const { error: profileError } = await supabase.from('users').insert({
-        id: authData.user.id,
-        email,
-        nombre: nombre.trim(),
-        telefono: telefono.trim() || null,
-        role: selectedRole,
-        activo: true,
-      });
-
-      if (profileError) {
-        setError('La cuenta fue creada pero hubo un error al guardar el perfil. Contacte a soporte.');
+      if (!res.ok) {
+        setError(data.error || 'Error al crear la cuenta.');
         setIsLoading(false);
         return;
       }
