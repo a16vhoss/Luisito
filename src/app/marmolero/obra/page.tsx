@@ -16,10 +16,11 @@ import {
   Pause,
   Filter,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 type PiezaWorkStatus = "por_iniciar" | "en_proceso" | "pausada" | "completada" | "bloqueada"
 
-const mockPiezas = [
+const initialPiezas = [
   {
     id: "1",
     tipo: "CORTE DIAMANTE",
@@ -97,11 +98,25 @@ const prioridadConfig = {
 }
 
 export default function ObraMarmoleroPage() {
+  const { toast } = useToast()
   const [filter, setFilter] = useState<"todas" | PiezaWorkStatus>("todas")
+  const [piezas, setPiezas] = useState(initialPiezas)
 
-  const filtered = mockPiezas.filter(
+  const filtered = piezas.filter(
     (p) => filter === "todas" || p.estatus === filter
   )
+
+  const updatePiezaStatus = (id: string, newStatus: PiezaWorkStatus, toastTitle: string) => {
+    const pieza = piezas.find((p) => p.id === id)
+    if (!pieza) return
+    setPiezas((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, estatus: newStatus } : p))
+    )
+    toast({
+      title: toastTitle,
+      description: `Pieza ${pieza.numero} ${newStatus === "en_proceso" ? "en proceso" : newStatus === "pausada" ? "pausada" : newStatus === "completada" ? "completada" : newStatus}`,
+    })
+  }
 
   return (
     <div className="min-h-screen bg-marble-950">
@@ -116,7 +131,7 @@ export default function ObraMarmoleroPage() {
             <p className="text-xs text-marble-400">Sector A - Nave 2</p>
           </div>
           <span className="rounded-full bg-golden/15 px-2.5 py-0.5 text-xs font-bold text-golden">
-            {mockPiezas.length}
+            {piezas.length}
           </span>
         </div>
       </header>
@@ -125,11 +140,11 @@ export default function ObraMarmoleroPage() {
         {/* Stats */}
         <div className="grid grid-cols-5 gap-1.5 mb-4">
           {([
-            { count: mockPiezas.filter(p => p.estatus === "por_iniciar").length, label: "Inicio", color: "text-golden" },
-            { count: mockPiezas.filter(p => p.estatus === "en_proceso").length, label: "Proceso", color: "text-blue-400" },
-            { count: mockPiezas.filter(p => p.estatus === "pausada").length, label: "Pausa", color: "text-semaforo-amarillo" },
-            { count: mockPiezas.filter(p => p.estatus === "completada").length, label: "Hecho", color: "text-semaforo-verde" },
-            { count: mockPiezas.filter(p => p.estatus === "bloqueada").length, label: "Bloq.", color: "text-semaforo-rojo" },
+            { count: piezas.filter(p => p.estatus === "por_iniciar").length, label: "Inicio", color: "text-golden" },
+            { count: piezas.filter(p => p.estatus === "en_proceso").length, label: "Proceso", color: "text-blue-400" },
+            { count: piezas.filter(p => p.estatus === "pausada").length, label: "Pausa", color: "text-semaforo-amarillo" },
+            { count: piezas.filter(p => p.estatus === "completada").length, label: "Hecho", color: "text-semaforo-verde" },
+            { count: piezas.filter(p => p.estatus === "bloqueada").length, label: "Bloq.", color: "text-semaforo-rojo" },
           ]).map((s, i) => (
             <div key={i} className="rounded-lg bg-marble-900 px-2 py-2 text-center border border-marble-800">
               <p className={`text-base font-bold ${s.color}`}>{s.count}</p>
@@ -233,26 +248,38 @@ export default function ObraMarmoleroPage() {
 
                 {/* Main Action */}
                 {pieza.estatus === "por_iniciar" && (
-                  <button className="flex w-full items-center justify-center gap-2 bg-golden py-3 text-xs font-bold tracking-wide text-marble-950 active:bg-golden-dark transition-colors">
+                  <button
+                    onClick={() => updatePiezaStatus(pieza.id, "en_proceso", "Trabajo iniciado")}
+                    className="flex w-full items-center justify-center gap-2 bg-golden py-3 text-xs font-bold tracking-wide text-marble-950 active:bg-golden-dark transition-colors"
+                  >
                     <Play className="h-4 w-4" />
                     INICIAR TRABAJO
                   </button>
                 )}
                 {pieza.estatus === "en_proceso" && (
                   <div className="flex border-t border-marble-800">
-                    <button className="flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-semibold text-semaforo-amarillo active:bg-marble-800 transition-colors">
+                    <button
+                      onClick={() => updatePiezaStatus(pieza.id, "pausada", "Trabajo pausado")}
+                      className="flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-semibold text-semaforo-amarillo active:bg-marble-800 transition-colors"
+                    >
                       <Pause className="h-3.5 w-3.5" />
                       Pausar
                     </button>
                     <div className="w-px bg-marble-800" />
-                    <button className="flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-semibold text-semaforo-verde active:bg-marble-800 transition-colors">
+                    <button
+                      onClick={() => updatePiezaStatus(pieza.id, "completada", "Trabajo completado")}
+                      className="flex flex-1 items-center justify-center gap-1.5 py-3 text-xs font-semibold text-semaforo-verde active:bg-marble-800 transition-colors"
+                    >
                       <CheckCircle2 className="h-3.5 w-3.5" />
                       Completar
                     </button>
                   </div>
                 )}
                 {pieza.estatus === "pausada" && (
-                  <button className="flex w-full items-center justify-center gap-2 border-t border-marble-800 py-3 text-xs font-semibold text-blue-400 active:bg-marble-800 transition-colors">
+                  <button
+                    onClick={() => updatePiezaStatus(pieza.id, "en_proceso", "Trabajo reanudado")}
+                    className="flex w-full items-center justify-center gap-2 border-t border-marble-800 py-3 text-xs font-semibold text-blue-400 active:bg-marble-800 transition-colors"
+                  >
                     <Play className="h-3.5 w-3.5" />
                     Reanudar Trabajo
                   </button>

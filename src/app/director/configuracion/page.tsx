@@ -28,6 +28,7 @@ import {
   Pencil,
 } from "lucide-react"
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 const usuarios = [
   {
@@ -158,6 +159,7 @@ const permisosColors: Record<string, string> = {
 }
 
 export default function ConfiguracionPage() {
+  const { toast } = useToast()
   const [tab, setTab] = useState("usuarios")
 
   return (
@@ -244,7 +246,7 @@ export default function ConfiguracionPage() {
                       className="h-8 w-56 rounded-lg border border-[#E0DBD1] bg-[#FAF9F7] pl-8 pr-3 text-xs focus:border-[#D4A843] focus:outline-none"
                     />
                   </div>
-                  <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]" size="sm">
+                  <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]" size="sm" onClick={() => toast({ title: "Próximamente", description: "Esta funcionalidad estará disponible pronto." })}>
                     <Plus className="h-3.5 w-3.5" />
                     Nuevo Usuario
                   </Button>

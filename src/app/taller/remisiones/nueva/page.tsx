@@ -1,6 +1,7 @@
 "use client"
 
 import React, { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,6 +18,7 @@ import {
   FileText,
   Send,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 const mockObras = [
   { id: "1", nombre: "Torre Lujo - Etapa 4", cliente: "Grupo Inmobiliario del Caribe" },
@@ -43,6 +45,8 @@ interface LineaRemision {
 }
 
 export default function NuevaRemisionPage() {
+  const router = useRouter()
+  const { toast } = useToast()
   const [obraId, setObraId] = useState("")
   const [choferId, setChoferId] = useState("")
   const [lineas, setLineas] = useState<LineaRemision[]>([
@@ -230,6 +234,21 @@ export default function NuevaRemisionPage() {
         {/* Submit */}
         <Button
           className="mt-6 h-12 w-full rounded-xl bg-golden text-sm font-bold tracking-wide text-marble-950 hover:bg-golden-light active:bg-golden-dark"
+          onClick={() => {
+            if (!obraId) {
+              toast({ title: "Error", description: "Selecciona una obra destino.", variant: "destructive" })
+              return
+            }
+            const hasConcepto = lineas.some((l) => l.conceptoId !== "")
+            if (!hasConcepto) {
+              toast({ title: "Error", description: "Selecciona al menos un concepto.", variant: "destructive" })
+              return
+            }
+            toast({ title: "Remisión creada", description: "REM #29444 generada exitosamente" })
+            setTimeout(() => {
+              router.push("/taller/remisiones")
+            }, 1500)
+          }}
         >
           <Send className="mr-2 h-4 w-4" />
           CREAR REMISIÓN

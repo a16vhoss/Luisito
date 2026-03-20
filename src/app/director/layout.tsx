@@ -22,14 +22,14 @@ import {
 } from "lucide-react"
 
 const sidebarLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/obras", label: "Obras", icon: HardHat },
-  { href: "/personal", label: "Personal", icon: Users },
-  { href: "/almacen", label: "Almacén", icon: Warehouse },
-  { href: "/choferes", label: "Choferes", icon: Truck },
-  { href: "/finanzas", label: "Finanzas", icon: DollarSign },
-  { href: "/reportes", label: "Reportes", icon: FileBarChart },
-  { href: "/configuracion", label: "Configuración", icon: Settings },
+  { href: "/director/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/director/obras", label: "Obras", icon: HardHat },
+  { href: "/director/personal", label: "Personal", icon: Users },
+  { href: "/director/almacen", label: "Almacén", icon: Warehouse },
+  { href: "/director/choferes", label: "Choferes", icon: Truck },
+  { href: "/director/finanzas", label: "Finanzas", icon: DollarSign },
+  { href: "/director/reportes", label: "Reportes", icon: FileBarChart },
+  { href: "/director/configuracion", label: "Configuración", icon: Settings },
 ]
 
 export default function DirectorLayout({
@@ -52,7 +52,7 @@ export default function DirectorLayout({
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-[#E0DBD1] px-4">
           {!collapsed && (
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <Link href="/director/dashboard" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1E1A14]">
                 <span className="text-sm font-bold text-[#D4A843]">MC</span>
               </div>
@@ -65,7 +65,7 @@ export default function DirectorLayout({
             </Link>
           )}
           {collapsed && (
-            <Link href="/dashboard" className="mx-auto flex items-center">
+            <Link href="/director/dashboard" className="mx-auto flex items-center">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1E1A14]">
                 <span className="text-sm font-bold text-[#D4A843]">MC</span>
               </div>
@@ -78,7 +78,7 @@ export default function DirectorLayout({
           {sidebarLinks.map((link) => {
             const isActive =
               pathname === link.href ||
-              (link.href !== "/dashboard" && pathname?.startsWith(link.href))
+              (link.href !== "/director/dashboard" && pathname?.startsWith(link.href))
             return (
               <Link
                 key={link.href}

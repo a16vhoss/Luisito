@@ -16,9 +16,9 @@ import {
 } from "lucide-react"
 
 const sidebarLinks = [
-  { href: "/personal", label: "Personal", icon: Users },
-  { href: "/asistencia", label: "Asistencia", icon: CalendarCheck },
-  { href: "/faltas", label: "Faltas", icon: AlertCircle },
+  { href: "/rrhh/personal", label: "Personal", icon: Users },
+  { href: "/rrhh/asistencia", label: "Asistencia", icon: CalendarCheck },
+  { href: "/rrhh/faltas", label: "Faltas", icon: AlertCircle },
 ]
 
 export default function RRHHLayout({
@@ -41,7 +41,7 @@ export default function RRHHLayout({
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-[#E0DBD1] px-4">
           {!collapsed && (
-            <Link href="/personal" className="flex items-center gap-2">
+            <Link href="/rrhh/personal" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1E1A14]">
                 <span className="text-sm font-bold text-[#D4A843]">MC</span>
               </div>
@@ -54,7 +54,7 @@ export default function RRHHLayout({
             </Link>
           )}
           {collapsed && (
-            <Link href="/personal" className="mx-auto flex items-center">
+            <Link href="/rrhh/personal" className="mx-auto flex items-center">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1E1A14]">
                 <span className="text-sm font-bold text-[#D4A843]">MC</span>
               </div>
@@ -66,7 +66,7 @@ export default function RRHHLayout({
         <nav className="flex-1 space-y-1 px-3 py-4">
           {sidebarLinks.map((link) => {
             const isActive =
-              pathname === link.href || pathname?.startsWith(link.href + "/")
+              pathname === link.href || pathname?.startsWith(link.href)
             return (
               <Link
                 key={link.href}

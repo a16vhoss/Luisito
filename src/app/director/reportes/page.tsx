@@ -22,6 +22,7 @@ import {
   Clock,
   Filter,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 const reportesDisponibles = [
   {
@@ -164,6 +165,7 @@ const tipoColors: Record<string, string> = {
 }
 
 export default function ReportesPage() {
+  const { toast } = useToast()
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -174,7 +176,7 @@ export default function ReportesPage() {
             Generación y consulta de reportes operativos y financieros
           </p>
         </div>
-        <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]">
+        <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]" onClick={() => toast({ title: "Exportando reporte...", description: "El archivo se descargará en breve." })}>
           <FileBarChart className="h-4 w-4" />
           Generar Reporte
         </Button>
@@ -271,7 +273,7 @@ export default function ReportesPage() {
                   </TableCell>
                   <TableCell className="text-sm text-[#7A6D5A]">{rpt.tamaño}</TableCell>
                   <TableCell>
-                    <Button variant="ghost" size="sm">
+                    <Button variant="ghost" size="sm" onClick={() => toast({ title: "Exportando reporte...", description: "El archivo se descargará en breve." })}>
                       <Download className="h-4 w-4 text-[#7A6D5A]" />
                     </Button>
                   </TableCell>

@@ -17,10 +17,10 @@ import {
 } from "lucide-react"
 
 const sidebarLinks = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/almacen", label: "Almacén", icon: Warehouse },
-  { href: "/compras", label: "Compras", icon: ShoppingCart },
-  { href: "/inventario", label: "Inventario", icon: PackageSearch },
+  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/almacen", label: "Almacén", icon: Warehouse },
+  { href: "/admin/compras", label: "Compras", icon: ShoppingCart },
+  { href: "/admin/inventario", label: "Inventario", icon: PackageSearch },
 ]
 
 export default function AdminLayout({
@@ -43,7 +43,7 @@ export default function AdminLayout({
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-[#E0DBD1] px-4">
           {!collapsed && (
-            <Link href="/dashboard" className="flex items-center gap-2">
+            <Link href="/admin/dashboard" className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1E1A14]">
                 <span className="text-sm font-bold text-[#D4A843]">MC</span>
               </div>
@@ -56,7 +56,7 @@ export default function AdminLayout({
             </Link>
           )}
           {collapsed && (
-            <Link href="/dashboard" className="mx-auto flex items-center">
+            <Link href="/admin/dashboard" className="mx-auto flex items-center">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1E1A14]">
                 <span className="text-sm font-bold text-[#D4A843]">MC</span>
               </div>
@@ -69,7 +69,7 @@ export default function AdminLayout({
           {sidebarLinks.map((link) => {
             const isActive =
               pathname === link.href ||
-              (link.href !== "/dashboard" && pathname?.startsWith(link.href))
+              (link.href !== "/admin/dashboard" && pathname?.startsWith(link.href))
             return (
               <Link
                 key={link.href}

@@ -227,13 +227,13 @@ export default function LoginPage() {
         {/* Links */}
         <div className="mt-6 flex items-center justify-between text-xs">
           <a
-            href="#"
+            href="/reset-password"
             className="text-marble-500 transition-colors hover:text-golden"
           >
             ¿Olvidó su Contraseña?
           </a>
           <a
-            href="#"
+            href="mailto:soporte@marmolcalibe.com"
             className="text-marble-500 transition-colors hover:text-golden"
           >
             Soporte Técnico

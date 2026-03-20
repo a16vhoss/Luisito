@@ -16,10 +16,25 @@ import {
   Filter,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { useToast } from "@/hooks/use-toast"
 
 type InstallStatus = "pendiente" | "en_proceso" | "instalada" | "verificada"
 
-const mockInstalaciones = [
+interface Instalacion {
+  id: string
+  nombre: string
+  material: string
+  dimensiones: string
+  sku: string
+  estatus: InstallStatus
+  instalador: string
+  zona: string
+  progreso?: number
+  fechaInstalacion?: string
+  fechaVerificacion?: string
+}
+
+const initialInstalaciones: Instalacion[] = [
   {
     id: "1",
     nombre: "Cubierta Cocina Depto 401",
@@ -32,23 +47,23 @@ const mockInstalaciones = [
   },
   {
     id: "2",
-    nombre: "Piso Vestíbulo A",
+    nombre: "Piso Vestibulo A",
     material: "Nero Marquina",
     dimensiones: "60 x 60 cm",
     sku: "PV-NER-012",
     estatus: "en_proceso" as InstallStatus,
-    instalador: "Roberto Sánchez",
-    zona: "Planta Baja - Vestíbulo",
+    instalador: "Roberto Sanchez",
+    zona: "Planta Baja - Vestibulo",
     progreso: 65,
   },
   {
     id: "3",
-    nombre: "Encimera Baño Principal",
+    nombre: "Encimera Bano Principal",
     material: "Calacatta Gold",
     dimensiones: "120 x 55 cm",
     sku: "EB-CAL-003",
     estatus: "instalada" as InstallStatus,
-    instalador: "Roberto Sánchez",
+    instalador: "Roberto Sanchez",
     zona: "Piso 4 - Depto 401",
     fechaInstalacion: "18 Mar 2026",
   },
@@ -84,16 +99,34 @@ const statusConfig: Record<InstallStatus, { label: string; color: string }> = {
 }
 
 export default function InstalacionesPage() {
+  const { toast } = useToast()
   const [filter, setFilter] = useState<"todas" | InstallStatus>("todas")
+  const [instalaciones, setInstalaciones] = useState(initialInstalaciones)
 
-  const filtered = mockInstalaciones.filter(
+  const filtered = instalaciones.filter(
     (p) => filter === "todas" || p.estatus === filter
   )
 
-  const pendientes = mockInstalaciones.filter((p) => p.estatus === "pendiente").length
-  const enProceso = mockInstalaciones.filter((p) => p.estatus === "en_proceso").length
-  const instaladas = mockInstalaciones.filter((p) => p.estatus === "instalada").length
-  const verificadas = mockInstalaciones.filter((p) => p.estatus === "verificada").length
+  const pendientes = instalaciones.filter((p) => p.estatus === "pendiente").length
+  const enProceso = instalaciones.filter((p) => p.estatus === "en_proceso").length
+  const instaladas = instalaciones.filter((p) => p.estatus === "instalada").length
+  const verificadas = instalaciones.filter((p) => p.estatus === "verificada").length
+
+  const handleVerificar = (id: string) => {
+    const pieza = instalaciones.find((p) => p.id === id)
+    if (!pieza) return
+    setInstalaciones((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, estatus: "verificada" as InstallStatus, fechaVerificacion: "20 Mar 2026" }
+          : p
+      )
+    )
+    toast({
+      title: "Instalacion verificada",
+      description: `${pieza.nombre} verificada exitosamente`,
+    })
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF9F7]">
@@ -214,9 +247,12 @@ export default function InstalacionesPage() {
                 {/* Action */}
                 {pieza.estatus === "instalada" && (
                   <div className="border-t border-marble-100 px-4 py-2.5">
-                    <button className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-golden/10 py-2 text-xs font-semibold text-golden active:bg-golden/20 transition-colors">
+                    <button
+                      onClick={() => handleVerificar(pieza.id)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-golden/10 py-2 text-xs font-semibold text-golden active:bg-golden/20 transition-colors"
+                    >
                       <ShieldCheck className="h-3.5 w-3.5" />
-                      Verificar Instalación
+                      Verificar Instalacion
                     </button>
                   </div>
                 )}
@@ -224,7 +260,7 @@ export default function InstalacionesPage() {
                   <div className="border-t border-marble-100 px-4 py-2.5">
                     <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-semaforo-verde">
                       <CheckCircle2 className="h-3.5 w-3.5" />
-                      Verificada el {pieza.fechaVerificacion}
+                      Verificada el {"fechaVerificacion" in pieza ? pieza.fechaVerificacion : ""}
                     </div>
                   </div>
                 )}

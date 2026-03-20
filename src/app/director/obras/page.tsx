@@ -22,6 +22,7 @@ import {
   HardHat,
 } from "lucide-react"
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 const obras = [
   {
@@ -138,6 +139,7 @@ const statusColors: Record<string, string> = {
 }
 
 export default function ObrasPage() {
+  const { toast } = useToast()
   const [filter, setFilter] = useState<string>("Todas")
 
   const filteredObras =
@@ -155,7 +157,7 @@ export default function ObrasPage() {
             {obras.length} obras registradas &bull; {obras.filter((o) => o.status !== "Completada").length} activas
           </p>
         </div>
-        <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]">
+        <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]" onClick={() => toast({ title: "Próximamente", description: "Esta funcionalidad estará disponible pronto." })}>
           <Plus className="h-4 w-4" />
           Nueva Obra
         </Button>
@@ -255,7 +257,7 @@ export default function ObrasPage() {
                   </TableCell>
                   <TableCell>
                     <Link
-                      href={`/obras/${obra.id}`}
+                      href={`/director/obras/${obra.id}`}
                       className="font-medium text-[#1E1A14] hover:text-[#D4A843]"
                     >
                       {obra.nombre}
@@ -297,7 +299,7 @@ export default function ObrasPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Link href={`/obras/${obra.id}`}>
+                    <Link href={`/director/obras/${obra.id}`}>
                       <ArrowUpRight className="h-4 w-4 text-[#7A6D5A] opacity-0 transition-opacity group-hover:opacity-100" />
                     </Link>
                   </TableCell>

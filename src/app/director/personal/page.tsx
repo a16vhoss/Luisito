@@ -26,6 +26,7 @@ import {
   Factory,
 } from "lucide-react"
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 const resumenAsistencia = {
   total: 52,
@@ -171,6 +172,7 @@ const ubicacionIcons: Record<string, typeof Factory> = {
 }
 
 export default function PersonalPage() {
+  const { toast } = useToast()
   const [tab, setTab] = useState("todos")
 
   const filtered =
@@ -192,7 +194,7 @@ export default function PersonalPage() {
             Control de asistencia y ubicación del personal en tiempo real
           </p>
         </div>
-        <Button variant="outline" className="gap-2">
+        <Button variant="outline" className="gap-2" onClick={() => toast({ title: "Exportando reporte...", description: "El archivo se descargará en breve." })}>
           <Download className="h-4 w-4" />
           Exportar Asistencia
         </Button>

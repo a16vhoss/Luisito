@@ -12,6 +12,7 @@ import {
   ChevronRight,
   Hammer,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 type RegistroEstado = "sin_registrar" | "entrada" | "salida"
 
@@ -22,7 +23,9 @@ const mockHistorial = [
   { fecha: "15 Mar 2026", entrada: "06:58", salida: "16:02", horas: "9h 04m", tipo: "normal" as const },
 ]
 
-const mockPiezasHoy = [
+type PiezaEstatus = "por_iniciar" | "pendiente_liberacion" | "en_espera_materiales" | "en_proceso"
+
+const initialPiezasHoy = [
   {
     id: "1",
     tipo: "CORTE DIAMANTE",
@@ -30,7 +33,7 @@ const mockPiezasHoy = [
     nombre: "Encimera Calacatta Gold",
     medidas: "240 x 60 x 3 cm",
     acabado: "Pulido Espejo",
-    estatus: "por_iniciar" as const,
+    estatus: "por_iniciar" as PiezaEstatus,
   },
   {
     id: "2",
@@ -39,7 +42,7 @@ const mockPiezasHoy = [
     nombre: "Cubierta Nero Marquina",
     medidas: "180 x 55 x 2 cm",
     acabado: "Mate",
-    estatus: "pendiente_liberacion" as const,
+    estatus: "pendiente_liberacion" as PiezaEstatus,
   },
   {
     id: "3",
@@ -48,30 +51,52 @@ const mockPiezasHoy = [
     nombre: "Muro Blanco Carrara",
     medidas: "240 x 120 x 2 cm",
     acabado: "Biselado",
-    estatus: "en_espera_materiales" as const,
+    estatus: "en_espera_materiales" as PiezaEstatus,
   },
 ]
 
-const piezaStatusConfig = {
+const piezaStatusConfig: Record<PiezaEstatus, { label: string; color: string; actionable: boolean }> = {
   por_iniciar: { label: "INICIAR TRABAJO", color: "bg-golden text-marble-950", actionable: true },
-  pendiente_liberacion: { label: "PENDIENTE DE LIBERACIÓN DE CORTE", color: "bg-semaforo-amarillo/15 text-semaforo-amarillo", actionable: false },
+  en_proceso: { label: "EN PROCESO", color: "bg-blue-400/15 text-blue-400", actionable: false },
+  pendiente_liberacion: { label: "PENDIENTE DE LIBERACION DE CORTE", color: "bg-semaforo-amarillo/15 text-semaforo-amarillo", actionable: false },
   en_espera_materiales: { label: "EN ESPERA DE MATERIALES", color: "bg-marble-700 text-marble-400", actionable: false },
 }
 
 export default function AsistenciaPage() {
+  const { toast } = useToast()
   const [estado, setEstado] = useState<RegistroEstado>("sin_registrar")
   const [horaEntrada, setHoraEntrada] = useState<string | null>(null)
+  const [piezasHoy, setPiezasHoy] = useState(initialPiezasHoy)
 
   const handleRegistro = () => {
     if (estado === "sin_registrar") {
       const now = new Date()
-      setHoraEntrada(
-        now.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
-      )
+      const hora = now.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+      setHoraEntrada(hora)
       setEstado("entrada")
+      toast({
+        title: "Entrada registrada",
+        description: `Hora de entrada: ${hora}`,
+      })
     } else if (estado === "entrada") {
       setEstado("salida")
+      toast({
+        title: "Salida registrada",
+        description: "Jornada completada exitosamente",
+      })
     }
+  }
+
+  const handleIniciarTrabajo = (id: string) => {
+    const pieza = piezasHoy.find((p) => p.id === id)
+    if (!pieza) return
+    setPiezasHoy((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, estatus: "en_proceso" as PiezaEstatus } : p))
+    )
+    toast({
+      title: "Trabajo iniciado",
+      description: `Pieza ${pieza.numero} en proceso`,
+    })
   }
 
   const estadoConfig = {
@@ -110,7 +135,7 @@ export default function AsistenciaPage() {
               <span className="text-xs font-bold text-golden">MC</span>
             </div>
             <span className="text-sm font-bold tracking-widest text-marble-200">
-              MÁRMOL CALIBE
+              MARMOL CALIBE
             </span>
           </div>
           <button className="relative rounded-full p-2 text-marble-400 active:bg-marble-800">
@@ -121,10 +146,10 @@ export default function AsistenciaPage() {
 
       <div className="px-5 pb-6">
         {/* Greeting */}
-        <h1 className="text-2xl font-bold text-white">Buenos días, Roberto</h1>
+        <h1 className="text-2xl font-bold text-white">Buenos dias, Roberto</h1>
         <p className="mt-1 flex items-center gap-1.5 text-xs tracking-wide text-marble-400">
           <MapPin className="h-3.5 w-3.5" />
-          PLANTA DE FABRICACIÓN &bull; SECTOR A
+          PLANTA DE FABRICACION &bull; SECTOR A
         </p>
 
         {/* Big Attendance Button */}
@@ -163,12 +188,12 @@ export default function AsistenciaPage() {
               Piezas Asignadas
             </h2>
             <span className="rounded-full bg-golden/15 px-2.5 py-0.5 text-[10px] font-bold text-golden">
-              {mockPiezasHoy.length} HOY
+              {piezasHoy.length} HOY
             </span>
           </div>
 
           <div className="space-y-3">
-            {mockPiezasHoy.map((pieza) => {
+            {piezasHoy.map((pieza) => {
               const pStatus = piezaStatusConfig[pieza.estatus]
               return (
                 <div
@@ -199,7 +224,10 @@ export default function AsistenciaPage() {
                   {/* Action */}
                   <div className="mt-4">
                     {pStatus.actionable ? (
-                      <button className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold tracking-wide ${pStatus.color} active:opacity-80 transition-opacity`}>
+                      <button
+                        onClick={() => handleIniciarTrabajo(pieza.id)}
+                        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold tracking-wide ${pStatus.color} active:opacity-80 transition-opacity`}
+                      >
                         <Hammer className="h-4 w-4" />
                         {pStatus.label}
                       </button>

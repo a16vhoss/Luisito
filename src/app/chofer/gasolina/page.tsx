@@ -16,17 +16,61 @@ import {
   Clock,
 } from "lucide-react"
 import Link from "next/link"
+import { useToast } from "@/hooks/use-toast"
 
-const mockHistorial = [
+const initialHistorial = [
   { id: "1", fecha: "18 Mar 2026", monto: 1850.0, litros: 78.5, estacion: "Pemex Av. Tulum" },
   { id: "2", fecha: "15 Mar 2026", monto: 2100.0, litros: 89.2, estacion: "BP Bonampak" },
-  { id: "3", fecha: "12 Mar 2026", monto: 1650.0, litros: 70.1, estacion: "Pemex Puerto Juárez" },
+  { id: "3", fecha: "12 Mar 2026", monto: 1650.0, litros: 70.1, estacion: "Pemex Puerto Juarez" },
 ]
 
 export default function GasolinaPage() {
+  const { toast } = useToast()
   const [monto, setMonto] = useState("")
   const [litros, setLitros] = useState("")
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
+  const [historial, setHistorial] = useState(initialHistorial)
+
+  const handleRegistrarCarga = () => {
+    if (!monto || !litros) {
+      toast({
+        title: "Campos requeridos",
+        description: "Ingresa el monto y los litros para registrar la carga",
+      })
+      return
+    }
+
+    const montoNum = parseFloat(monto)
+    const litrosNum = parseFloat(litros)
+
+    if (isNaN(montoNum) || isNaN(litrosNum) || montoNum <= 0 || litrosNum <= 0) {
+      toast({
+        title: "Valores invalidos",
+        description: "El monto y los litros deben ser numeros mayores a 0",
+      })
+      return
+    }
+
+    const now = new Date()
+    const fecha = now.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
+    const newEntry = {
+      id: String(Date.now()),
+      fecha,
+      monto: montoNum,
+      litros: litrosNum,
+      estacion: "Estacion registrada",
+    }
+
+    setHistorial((prev) => [newEntry, ...prev])
+    setMonto("")
+    setLitros("")
+    setFotoPreview(null)
+
+    toast({
+      title: "Carga registrada exitosamente",
+      description: `$${montoNum.toFixed(2)} - ${litrosNum.toFixed(1)} litros`,
+    })
+  }
 
   return (
     <div className="min-h-screen bg-marble-950">
@@ -134,7 +178,7 @@ export default function GasolinaPage() {
                 </div>
                 <div className="text-center">
                   <p className="text-sm font-medium text-marble-300">Tomar Foto</p>
-                  <p className="text-[11px] text-marble-500">o subir desde galería</p>
+                  <p className="text-[11px] text-marble-500">o subir desde galeria</p>
                 </div>
               </button>
             )}
@@ -142,6 +186,7 @@ export default function GasolinaPage() {
 
           {/* Submit */}
           <Button
+            onClick={handleRegistrarCarga}
             className="h-12 w-full rounded-xl bg-golden text-sm font-bold tracking-wide text-marble-950 hover:bg-golden-light active:bg-golden-dark"
           >
             <Upload className="mr-2 h-4 w-4" />
@@ -155,7 +200,7 @@ export default function GasolinaPage() {
             Historial Reciente
           </h2>
           <div className="space-y-2">
-            {mockHistorial.map((item) => (
+            {historial.map((item) => (
               <div
                 key={item.id}
                 className="flex items-center justify-between rounded-xl border border-marble-800 bg-marble-900 px-4 py-3"

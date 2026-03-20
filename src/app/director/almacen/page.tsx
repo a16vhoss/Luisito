@@ -25,6 +25,7 @@ import {
   ArrowUpRight,
 } from "lucide-react"
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 const resumen = {
   totalItems: 148,
@@ -171,6 +172,7 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 }
 
 export default function AlmacenPage() {
+  const { toast } = useToast()
   const [tab, setTab] = useState("inventario")
 
   return (
@@ -184,11 +186,11 @@ export default function AlmacenPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => toast({ title: "Exportando reporte...", description: "El archivo se descargará en breve." })}>
             <Download className="h-4 w-4" />
             Exportar
           </Button>
-          <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]">
+          <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]" onClick={() => toast({ title: "Próximamente", description: "Esta funcionalidad estará disponible pronto." })}>
             <Plus className="h-4 w-4" />
             Registrar Entrada
           </Button>

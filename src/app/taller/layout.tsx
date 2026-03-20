@@ -12,10 +12,10 @@ import {
 } from "lucide-react"
 
 const bottomNavLinks = [
-  { href: "/taller/dashboard", label: "OPS", icon: LayoutDashboard },
-  { href: "/taller/remisiones", label: "Workshop", icon: Wrench },
-  { href: "/taller/salidas", label: "Delivery", icon: PackageCheck },
-  { href: "/taller/personal", label: "Profile", icon: UserCircle },
+  { href: "/taller/dashboard", label: "Operaciones", icon: LayoutDashboard },
+  { href: "/taller/remisiones", label: "Remisiones", icon: Wrench },
+  { href: "/taller/salidas", label: "Salidas", icon: PackageCheck },
+  { href: "/taller/personal", label: "Personal", icon: UserCircle },
 ]
 
 export default function TallerLayout({

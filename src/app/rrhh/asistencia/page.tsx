@@ -14,6 +14,7 @@ import {
   ChevronRight,
   Users,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 // ── Mock data ──
 type AttendanceRecord = {
@@ -61,6 +62,7 @@ const weeklySummary = [
 ]
 
 export default function AsistenciaPage() {
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterTipo, setFilterTipo] = useState<string>("todos")
   const [selectedDate, setSelectedDate] = useState("2026-03-19")
@@ -88,7 +90,7 @@ export default function AsistenciaPage() {
           <h1 className="text-2xl font-bold text-[#1E1A14]">Asistencia</h1>
           <p className="text-sm text-[#7A6D5A]">Reporte de asistencia por persona, semana y mes</p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg border border-[#E0DBD1] bg-white px-4 py-2.5 text-sm font-medium text-[#1E1A14] transition-colors hover:bg-[#F0EDE8]">
+        <button className="inline-flex items-center gap-2 rounded-lg border border-[#E0DBD1] bg-white px-4 py-2.5 text-sm font-medium text-[#1E1A14] transition-colors hover:bg-[#F0EDE8]" onClick={() => toast({ title: "Exportando reporte...", description: "El archivo se descargará en breve." })}>
           <Download className="h-4 w-4" />
           Exportar Reporte
         </button>

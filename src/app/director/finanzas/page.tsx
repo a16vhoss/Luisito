@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+// Tabs import removed - using manual tab switching for reliability
 import {
   DollarSign,
   TrendingUp,
@@ -25,6 +25,7 @@ import {
   PiggyBank,
 } from "lucide-react"
 import { useState } from "react"
+import { useToast } from "@/hooks/use-toast"
 
 const resumenFinanciero = {
   ingresosMes: "$1,420,000",
@@ -166,6 +167,7 @@ const statusColors: Record<string, string> = {
 }
 
 export default function FinanzasPage() {
+  const { toast } = useToast()
   const [tab, setTab] = useState("presupuestos")
 
   return (
@@ -179,11 +181,11 @@ export default function FinanzasPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => toast({ title: "Exportando reporte...", description: "El archivo se descargará en breve." })}>
             <Download className="h-4 w-4" />
             Exportar
           </Button>
-          <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]">
+          <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]" onClick={() => toast({ title: "Próximamente", description: "Esta funcionalidad estará disponible pronto." })}>
             <Receipt className="h-4 w-4" />
             Nueva Factura
           </Button>
@@ -281,103 +283,125 @@ export default function FinanzasPage() {
       </Card>
 
       {/* Tabs */}
-      <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
-          <TabsTrigger value="presupuestos">Presupuestos por Obra</TabsTrigger>
-          <TabsTrigger value="facturas">Facturas Recientes</TabsTrigger>
-        </TabsList>
+      <div>
+        <div className="inline-flex h-9 items-center justify-center rounded-lg bg-muted p-1 text-muted-foreground">
+          <button
+            onClick={() => setTab("presupuestos")}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${
+              tab === "presupuestos"
+                ? "bg-background text-foreground shadow"
+                : ""
+            }`}
+          >
+            Presupuestos por Obra
+          </button>
+          <button
+            onClick={() => setTab("facturas")}
+            className={`inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 text-sm font-medium transition-all ${
+              tab === "facturas"
+                ? "bg-background text-foreground shadow"
+                : ""
+            }`}
+          >
+            Facturas Recientes
+          </button>
+        </div>
 
-        <TabsContent value="presupuestos">
-          <Card>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Obra</TableHead>
-                    <TableHead className="text-right">Presupuesto</TableHead>
-                    <TableHead className="text-right">Facturado</TableHead>
-                    <TableHead className="text-right">Cobrado</TableHead>
-                    <TableHead className="text-right">Por Cobrar</TableHead>
-                    <TableHead>Avance</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {presupuestosObra.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <p className="font-medium text-[#1E1A14]">{p.obra}</p>
-                        <p className="text-[10px] text-[#7A6D5A]">{p.id}</p>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">{p.presupuesto}</TableCell>
-                      <TableCell className="text-right text-sm">{p.facturado}</TableCell>
-                      <TableCell className="text-right text-sm text-[#22C55E]">
-                        {p.cobrado}
-                      </TableCell>
-                      <TableCell className="text-right text-sm text-[#D4A843]">
-                        {p.porCobrar}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-16 rounded-full bg-[#F0EDE8]">
-                            <div
-                              className="h-1.5 rounded-full bg-[#D4A843]"
-                              style={{ width: `${p.avanceFinanciero}%` }}
-                            />
+        {tab === "presupuestos" && (
+          <div className="mt-2">
+            <Card>
+              <CardContent className="pt-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Obra</TableHead>
+                      <TableHead className="text-right">Presupuesto</TableHead>
+                      <TableHead className="text-right">Facturado</TableHead>
+                      <TableHead className="text-right">Cobrado</TableHead>
+                      <TableHead className="text-right">Por Cobrar</TableHead>
+                      <TableHead>Avance</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {presupuestosObra.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell>
+                          <p className="font-medium text-[#1E1A14]">{p.obra}</p>
+                          <p className="text-[10px] text-[#7A6D5A]">{p.id}</p>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{p.presupuesto}</TableCell>
+                        <TableCell className="text-right text-sm">{p.facturado}</TableCell>
+                        <TableCell className="text-right text-sm text-[#22C55E]">
+                          {p.cobrado}
+                        </TableCell>
+                        <TableCell className="text-right text-sm text-[#D4A843]">
+                          {p.porCobrar}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-16 rounded-full bg-[#F0EDE8]">
+                              <div
+                                className="h-1.5 rounded-full bg-[#D4A843]"
+                                style={{ width: `${p.avanceFinanciero}%` }}
+                              />
+                            </div>
+                            <span className="text-xs">{p.avanceFinanciero}%</span>
                           </div>
-                          <span className="text-xs">{p.avanceFinanciero}%</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[p.status] + " text-[10px]"}>
-                          {p.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[p.status] + " text-[10px]"}>
+                            {p.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
-        <TabsContent value="facturas">
-          <Card>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>No. Factura</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Obra</TableHead>
-                    <TableHead className="text-right">Monto</TableHead>
-                    <TableHead>Emisión</TableHead>
-                    <TableHead>Vencimiento</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {facturasRecientes.map((f) => (
-                    <TableRow key={f.numero}>
-                      <TableCell className="font-mono text-xs">{f.numero}</TableCell>
-                      <TableCell className="text-sm">{f.cliente}</TableCell>
-                      <TableCell className="text-sm text-[#7A6D5A]">{f.obra}</TableCell>
-                      <TableCell className="text-right font-semibold">{f.monto}</TableCell>
-                      <TableCell className="text-sm">{f.fecha}</TableCell>
-                      <TableCell className="text-sm">{f.vencimiento}</TableCell>
-                      <TableCell>
-                        <Badge className={statusColors[f.status] + " text-[10px]"}>
-                          {f.status}
-                        </Badge>
-                      </TableCell>
+        {tab === "facturas" && (
+          <div className="mt-2">
+            <Card>
+              <CardContent className="pt-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>No. Factura</TableHead>
+                      <TableHead>Cliente</TableHead>
+                      <TableHead>Obra</TableHead>
+                      <TableHead className="text-right">Monto</TableHead>
+                      <TableHead>Emisión</TableHead>
+                      <TableHead>Vencimiento</TableHead>
+                      <TableHead>Status</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  </TableHeader>
+                  <TableBody>
+                    {facturasRecientes.map((f) => (
+                      <TableRow key={f.numero}>
+                        <TableCell className="font-mono text-xs">{f.numero}</TableCell>
+                        <TableCell className="text-sm">{f.cliente}</TableCell>
+                        <TableCell className="text-sm text-[#7A6D5A]">{f.obra}</TableCell>
+                        <TableCell className="text-right font-semibold">{f.monto}</TableCell>
+                        <TableCell className="text-sm">{f.fecha}</TableCell>
+                        <TableCell className="text-sm">{f.vencimiento}</TableCell>
+                        <TableCell>
+                          <Badge className={statusColors[f.status] + " text-[10px]"}>
+                            {f.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
   Edit,
   MoreHorizontal,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 // ── Mock data ──
 type Employee = {
@@ -74,6 +75,7 @@ function getInitials(name: string) {
 }
 
 export default function PersonalPage() {
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRole, setFilterRole] = useState<string>("todos")
   const [filterActivo, setFilterActivo] = useState<string>("todos")
@@ -100,7 +102,7 @@ export default function PersonalPage() {
           <h1 className="text-2xl font-bold text-[#1E1A14]">Personal</h1>
           <p className="text-sm text-[#7A6D5A]">Directorio de empleados de Mármol Calibe</p>
         </div>
-        <button className="inline-flex items-center gap-2 rounded-lg bg-[#1E1A14] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2A2520]">
+        <button className="inline-flex items-center gap-2 rounded-lg bg-[#1E1A14] px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#2A2520]" onClick={() => toast({ title: "Próximamente", description: "Esta funcionalidad estará disponible pronto." })}>
           <Plus className="h-4 w-4" />
           Nuevo Empleado
         </button>

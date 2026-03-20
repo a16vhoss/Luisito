@@ -15,16 +15,11 @@ import {
   Hash,
   ChevronRight,
 } from "lucide-react"
-
-const stats = [
-  { label: "RECIBIDAS", value: 142, color: "text-marble-900" },
-  { label: "INSTALADAS", value: 88, color: "text-golden" },
-  { label: "VERIFICADAS", value: 45, color: "text-semaforo-verde" },
-]
+import { useToast } from "@/hooks/use-toast"
 
 type PiezaStatus = "en_espera" | "instalada" | "verificada" | "recibida"
 
-const mockPiezas = [
+const initialPiezas = [
   {
     id: "1",
     nombre: "Cubierta Cocina",
@@ -36,7 +31,7 @@ const mockPiezas = [
   },
   {
     id: "2",
-    nombre: "Piso Vestíbulo A",
+    nombre: "Piso Vestibulo A",
     material: "Nero Marquina",
     dimensiones: "60 x 60 cm",
     sku: "PV-NER-012",
@@ -45,7 +40,7 @@ const mockPiezas = [
   },
   {
     id: "3",
-    nombre: "Encimera Baño Principal",
+    nombre: "Encimera Bano Principal",
     material: "Calacatta Gold",
     dimensiones: "120 x 55 cm",
     sku: "EB-CAL-003",
@@ -72,7 +67,7 @@ const mockPiezas = [
   },
   {
     id: "6",
-    nombre: "Piso Baño Secundario",
+    nombre: "Piso Bano Secundario",
     material: "Travertino Navona",
     dimensiones: "45 x 45 cm",
     sku: "PB-TRV-008",
@@ -84,14 +79,16 @@ const mockPiezas = [
 const statusConfig: Record<PiezaStatus, { label: string; color: string; action: string }> = {
   en_espera: { label: "EN ESPERA", color: "bg-semaforo-amarillo/15 text-semaforo-amarillo", action: "Marcar Instalada" },
   recibida: { label: "RECIBIDA", color: "bg-blue-400/15 text-blue-400", action: "Marcar Instalada" },
-  instalada: { label: "INSTALADA", color: "bg-blue-500/15 text-blue-500", action: "Verificar Instalación" },
+  instalada: { label: "INSTALADA", color: "bg-blue-500/15 text-blue-500", action: "Verificar Instalacion" },
   verificada: { label: "VERIFICADA", color: "bg-semaforo-verde/15 text-semaforo-verde", action: "Verificada" },
 }
 
 export default function ObraDashboardPage() {
+  const { toast } = useToast()
   const [search, setSearch] = useState("")
+  const [piezas, setPiezas] = useState(initialPiezas)
 
-  const filtered = mockPiezas.filter((p) => {
+  const filtered = piezas.filter((p) => {
     if (!search) return true
     return (
       p.nombre.toLowerCase().includes(search.toLowerCase()) ||
@@ -99,6 +96,35 @@ export default function ObraDashboardPage() {
       p.sku.toLowerCase().includes(search.toLowerCase())
     )
   })
+
+  const stats = [
+    { label: "RECIBIDAS", value: piezas.filter((p) => p.estatus === "recibida" || p.estatus === "en_espera").length + piezas.filter((p) => p.estatus === "instalada").length + piezas.filter((p) => p.estatus === "verificada").length, color: "text-marble-900" },
+    { label: "INSTALADAS", value: piezas.filter((p) => p.estatus === "instalada").length + piezas.filter((p) => p.estatus === "verificada").length, color: "text-golden" },
+    { label: "VERIFICADAS", value: piezas.filter((p) => p.estatus === "verificada").length, color: "text-semaforo-verde" },
+  ]
+
+  const handleAction = (id: string) => {
+    const pieza = piezas.find((p) => p.id === id)
+    if (!pieza) return
+
+    if (pieza.estatus === "en_espera" || pieza.estatus === "recibida") {
+      setPiezas((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, estatus: "instalada" as PiezaStatus } : p))
+      )
+      toast({
+        title: "Pieza instalada",
+        description: `${pieza.nombre} marcada como instalada`,
+      })
+    } else if (pieza.estatus === "instalada") {
+      setPiezas((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, estatus: "verificada" as PiezaStatus } : p))
+      )
+      toast({
+        title: "Instalacion verificada",
+        description: `${pieza.nombre} verificada exitosamente`,
+      })
+    }
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF9F7]">
@@ -110,7 +136,7 @@ export default function ObraDashboardPage() {
               <span className="text-xs font-bold text-golden">MC</span>
             </div>
             <span className="text-sm font-bold tracking-widest text-marble-200">
-              MÁRMOL CALIBE
+              MARMOL CALIBE
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -203,7 +229,10 @@ export default function ObraDashboardPage() {
                   {/* Action Button */}
                   {pieza.estatus !== "verificada" && (
                     <div className="border-t border-marble-100 px-4 py-2.5">
-                      <button className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-golden/10 py-2 text-xs font-semibold text-golden active:bg-golden/20 transition-colors">
+                      <button
+                        onClick={() => handleAction(pieza.id)}
+                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-golden/10 py-2 text-xs font-semibold text-golden active:bg-golden/20 transition-colors"
+                      >
                         {pieza.estatus === "en_espera" || pieza.estatus === "recibida" ? (
                           <CheckCircle2 className="h-3.5 w-3.5" />
                         ) : (
@@ -218,7 +247,7 @@ export default function ObraDashboardPage() {
                     <div className="border-t border-marble-100 px-4 py-2.5">
                       <div className="flex items-center justify-center gap-1.5 text-xs font-medium text-semaforo-verde">
                         <ShieldCheck className="h-3.5 w-3.5" />
-                        Verificación Completa
+                        Verificacion Completa
                       </div>
                     </div>
                   )}

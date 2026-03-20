@@ -20,6 +20,7 @@ import {
   Package,
   DollarSign,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 // ---------- MOCK DATA ----------
 const asistencia = {
@@ -117,6 +118,7 @@ const m2Semanal = {
 
 // ---------- COMPONENT ----------
 export default function DashboardPage() {
+  const { toast } = useToast()
   const maxBar = Math.max(...m2Semanal.dias.map((d) => d.valor))
 
   return (
@@ -130,11 +132,11 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => toast({ title: "Exportando reporte...", description: "El archivo se descargará en breve." })}>
             <Download className="h-4 w-4" />
             Exportar Reporte
           </Button>
-          <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]">
+          <Button className="gap-2 bg-[#D4A843] text-white hover:bg-[#C49A3A]" onClick={() => toast({ title: "Próximamente", description: "Esta funcionalidad estará disponible pronto." })}>
             <Plus className="h-4 w-4" />
             Nuevo Proyecto
           </Button>

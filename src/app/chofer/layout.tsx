@@ -12,10 +12,10 @@ import {
 } from "lucide-react"
 
 const bottomNavLinks = [
-  { href: "/chofer/cargas", label: "OPS", icon: Truck },
-  { href: "/chofer/gasolina", label: "Workshop", icon: Wrench },
-  { href: "/chofer/fotos", label: "Delivery", icon: PackageCheck },
-  { href: "/chofer/perfil", label: "Profile", icon: UserCircle },
+  { href: "/chofer/cargas", label: "Cargas", icon: Truck },
+  { href: "/chofer/gasolina", label: "Gasolina", icon: Wrench },
+  { href: "/chofer/fotos", label: "Fotos", icon: PackageCheck },
+  { href: "/chofer/perfil", label: "Perfil", icon: UserCircle },
 ]
 
 export default function ChoferLayout({

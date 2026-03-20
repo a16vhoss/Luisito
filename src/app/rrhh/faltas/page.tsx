@@ -13,6 +13,7 @@ import {
   Eye,
   ChevronDown,
 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 // ── Mock data ──
 type FaltaRecord = {
@@ -51,6 +52,7 @@ const employeeRanking = [
 ]
 
 export default function FaltasPage() {
+  const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterTipo, setFilterTipo] = useState<string>("todos")
   const [filterPeriodo, setFilterPeriodo] = useState("mes")
@@ -83,7 +85,7 @@ export default function FaltasPage() {
             <option value="mes">Este Mes</option>
             <option value="quincena">Última Quincena</option>
           </select>
-          <button className="inline-flex items-center gap-2 rounded-lg border border-[#E0DBD1] bg-white px-4 py-2 text-sm font-medium text-[#1E1A14] transition-colors hover:bg-[#F0EDE8]">
+          <button className="inline-flex items-center gap-2 rounded-lg border border-[#E0DBD1] bg-white px-4 py-2 text-sm font-medium text-[#1E1A14] transition-colors hover:bg-[#F0EDE8]" onClick={() => toast({ title: "Exportando reporte...", description: "El archivo se descargará en breve." })}>
             <Download className="h-4 w-4" />
             Exportar
           </button>
