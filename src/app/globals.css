@@ -2,22 +2,75 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #FFFFFF;
+    --foreground: #1E1A14;
+    --card: #FFFFFF;
+    --card-foreground: #1E1A14;
+    --popover: #FFFFFF;
+    --popover-foreground: #1E1A14;
+    --primary: #1E1A14;
+    --primary-foreground: #FAF9F7;
+    --secondary: #F0EDE8;
+    --secondary-foreground: #1E1A14;
+    --muted: #F0EDE8;
+    --muted-foreground: #7A6D5A;
+    --accent: #D4A843;
+    --accent-foreground: #1E1A14;
+    --destructive: #EF4444;
+    --border: #E0DBD1;
+    --input: #E0DBD1;
+    --ring: #D4A843;
+    --radius: 0.75rem;
+    --sidebar: #FAF9F7;
+    --sidebar-foreground: #1E1A14;
+    --sidebar-primary: #1E1A14;
+    --sidebar-primary-foreground: #FAF9F7;
+    --sidebar-accent: #F0EDE8;
+    --sidebar-accent-foreground: #1E1A14;
+    --sidebar-border: #E0DBD1;
+    --sidebar-ring: #D4A843;
+  }
+
+  .dark {
+    --background: #0F0D0A;
+    --foreground: #FAF9F7;
+    --card: #1E1A14;
+    --card-foreground: #FAF9F7;
+    --popover: #1E1A14;
+    --popover-foreground: #FAF9F7;
+    --primary: #FAF9F7;
+    --primary-foreground: #1E1A14;
+    --secondary: #2A2520;
+    --secondary-foreground: #FAF9F7;
+    --muted: #2A2520;
+    --muted-foreground: #B0A48E;
+    --accent: #D4A843;
+    --accent-foreground: #1E1A14;
+    --destructive: #EF4444;
+    --border: rgba(255, 255, 255, 0.1);
+    --input: rgba(255, 255, 255, 0.15);
+    --ring: #D4A843;
+    --sidebar: #1E1A14;
+    --sidebar-foreground: #FAF9F7;
+    --sidebar-primary: #D4A843;
+    --sidebar-primary-foreground: #1E1A14;
+    --sidebar-accent: #2A2520;
+    --sidebar-accent-foreground: #FAF9F7;
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --sidebar-ring: #D4A843;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
 }
 
 @layer utilities {
