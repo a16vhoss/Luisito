@@ -272,8 +272,8 @@ export default function DashboardPage() {
           const ratio = m.stock_minimo > 0 ? m.stock_actual / m.stock_minimo : 0
           return {
             material: m.nombre ?? "—",
-            stock: `${m.stock_actual} ${m.unidad ?? "m²"}`,
-            minimo: `${m.stock_minimo} ${m.unidad ?? "m²"}`,
+            stock: `${m.stock_actual} ${m.unidad_medida ?? "m²"}`,
+            minimo: `${m.stock_minimo} ${m.unidad_medida ?? "m²"}`,
             urgencia: ratio < 0.5 ? "critico" : "bajo",
           }
         })
@@ -327,9 +327,9 @@ export default function DashboardPage() {
       // Attempt to fetch movimientos_almacen for the current week
       const { data: movimientos } = await supabase
         .from("movimientos_almacen")
-        .select("fecha, cantidad")
-        .gte("fecha", weekStart)
-        .lte("fecha", today)
+        .select("created_at, cantidad")
+        .gte("created_at", weekStart + "T00:00:00")
+        .lte("created_at", today + "T23:59:59")
 
       const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
       const diasData: { dia: string; valor: number }[] = diasSemana.map((dia, idx) => {
@@ -337,7 +337,7 @@ export default function DashboardPage() {
         targetDate.setDate(monday.getDate() + idx)
         const dateStr = targetDate.toISOString().split("T")[0]
         const dayTotal = (movimientos ?? [])
-          .filter((m: any) => m.fecha === dateStr)
+          .filter((m: any) => m.created_at?.startsWith(dateStr))
           .reduce((sum: number, m: any) => sum + (Number(m.cantidad) || 0), 0)
         return { dia, valor: dayTotal }
       })

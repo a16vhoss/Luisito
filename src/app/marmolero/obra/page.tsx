@@ -39,10 +39,7 @@ const prioridadConfig: Record<string, string> = {
 interface PiezaFromDB {
   id: string
   estatus: string
-  prioridad: string | null
-  tiempo_transcurrido: string | null
-  tiempo_total: string | null
-  motivo_pausa: string | null
+  notas: string | null
   concepto: {
     tipo_pieza: string | null
     material_tipo: string | null
@@ -85,8 +82,8 @@ export default function ObraMarmoleroPage() {
     const { data, error } = await supabase
       .from("piezas")
       .select("*, concepto:conceptos_obra(tipo_pieza, material_tipo, medida_largo, medida_ancho, obra:obras(nombre))")
-      .eq("asignado_a", user.id)
-      .not("estatus", "eq", "instalada")
+      .eq("instalado_por", user.id)
+      .not("estatus", "eq", "verificada")
       .order("created_at", { ascending: false })
 
     if (error) {
@@ -108,10 +105,10 @@ export default function ObraMarmoleroPage() {
           medidas: `${largo} x ${ancho} cm`,
           acabado: concepto?.material_tipo || "--",
           estatus: (p.estatus as PiezaWorkStatus) || "por_iniciar",
-          prioridad: p.prioridad || "media",
-          tiempoTranscurrido: p.tiempo_transcurrido || undefined,
-          tiempoTotal: p.tiempo_total || undefined,
-          motivo: p.motivo_pausa || undefined,
+          prioridad: "media",
+          tiempoTranscurrido: undefined,
+          tiempoTotal: undefined,
+          motivo: p.notas || undefined,
         }
       })
       setPiezas(mapped)
