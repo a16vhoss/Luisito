@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,7 +13,9 @@ import {
   Clock,
   MapPin,
   Package,
+  Loader2,
 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
 type FotoTipo = "carga" | "entrega" | "daño"
 
@@ -23,42 +25,36 @@ const fotoTipos: { value: FotoTipo; label: string; desc: string }[] = [
   { value: "daño", label: "Daño", desc: "Reportar daño en material" },
 ]
 
-const mockFotosRecientes = [
-  {
-    id: "1",
-    tipo: "entrega" as const,
-    folio: "REM #29440",
-    hora: "07:42",
-    ubicacion: "Torre Lujo",
-    count: 4,
-  },
-  {
-    id: "2",
-    tipo: "carga" as const,
-    folio: "REM #29439",
-    hora: "Ayer 16:30",
-    ubicacion: "Planta Principal",
-    count: 3,
-  },
-  {
-    id: "3",
-    tipo: "daño" as const,
-    folio: "REM #29438",
-    hora: "Ayer 11:15",
-    ubicacion: "Residencial Playa",
-    count: 2,
-  },
-]
-
-const tipoColors = {
+const tipoColors: Record<string, string> = {
   carga: "bg-blue-500/15 text-blue-400",
   entrega: "bg-semaforo-verde/15 text-semaforo-verde",
   daño: "bg-semaforo-rojo/15 text-semaforo-rojo",
 }
 
 export default function FotosPage() {
+  const [loading, setLoading] = useState(true)
   const [selectedTipo, setSelectedTipo] = useState<FotoTipo>("entrega")
   const [fotos, setFotos] = useState<string[]>([])
+  const [fotosRecientes, setFotosRecientes] = useState<any[]>([])
+
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const userId = user.id
+
+      const { data: fotosData } = await supabase
+        .from("fotos")
+        .select("*, obra:obras(nombre)")
+        .eq("subido_por", userId)
+        .order("created_at", { ascending: false })
+
+      setFotosRecientes(fotosData || [])
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
 
   const addFoto = () => {
     setFotos([...fotos, `foto_${fotos.length + 1}`])
@@ -66,6 +62,14 @@ export default function FotosPage() {
 
   const removeFoto = (index: number) => {
     setFotos(fotos.filter((_, i) => i !== index))
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-marble-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-golden" />
+      </div>
+    )
   }
 
   return (
@@ -78,7 +82,7 @@ export default function FotosPage() {
           </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Evidencia Fotográfica</h1>
-            <p className="text-xs text-marble-500">REM #29441 - Torre Lujo</p>
+            <p className="text-xs text-marble-500">Mis fotos subidas</p>
           </div>
         </div>
       </header>
@@ -172,37 +176,55 @@ export default function FotosPage() {
           <h2 className="mb-3 text-xs font-semibold tracking-widest text-marble-500 uppercase">
             Fotos Recientes
           </h2>
-          <div className="space-y-2">
-            {mockFotosRecientes.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between rounded-xl border border-marble-800 bg-marble-900 px-4 py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-marble-800">
-                    <Image className="h-5 w-5 text-marble-500" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-white">{item.folio}</p>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${tipoColors[item.tipo]}`}>
-                        {item.tipo.toUpperCase()}
-                      </span>
+          {fotosRecientes.length === 0 ? (
+            <div className="rounded-xl border border-marble-800 bg-marble-900 p-8 text-center">
+              <Image className="mx-auto h-8 w-8 text-marble-700" />
+              <p className="mt-3 text-sm font-medium text-marble-400">Sin fotos</p>
+              <p className="mt-1 text-xs text-marble-600">Aún no has subido evidencia fotográfica</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {fotosRecientes.map((item) => {
+                const tipoKey = item.tipo || "carga"
+                const colorClass = tipoColors[tipoKey] || tipoColors.carga
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between rounded-xl border border-marble-800 bg-marble-900 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-marble-800">
+                        <Image className="h-5 w-5 text-marble-500" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-white">
+                            {item.obra?.nombre || "Sin obra"}
+                          </p>
+                          {item.tipo && (
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${colorClass}`}>
+                              {String(item.tipo).toUpperCase()}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-marble-500 flex items-center gap-2">
+                          <span className="flex items-center gap-0.5">
+                            <Clock className="h-3 w-3" />
+                            {new Date(item.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                          </span>
+                          {item.obra?.nombre && (
+                            <span className="flex items-center gap-0.5">
+                              <MapPin className="h-3 w-3" /> {item.obra.nombre}
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
-                    <p className="text-[11px] text-marble-500 flex items-center gap-2">
-                      <span className="flex items-center gap-0.5">
-                        <Clock className="h-3 w-3" /> {item.hora}
-                      </span>
-                      <span className="flex items-center gap-0.5">
-                        <MapPin className="h-3 w-3" /> {item.ubicacion}
-                      </span>
-                    </p>
                   </div>
-                </div>
-                <span className="text-xs font-medium text-marble-500">{item.count} fotos</span>
-              </div>
-            ))}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>

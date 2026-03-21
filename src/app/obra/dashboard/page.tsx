@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -14,71 +14,20 @@ import {
   Ruler,
   Hash,
   ChevronRight,
+  Loader2,
+  Truck,
+  Clock,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
-type PiezaStatus = "en_espera" | "instalada" | "verificada" | "recibida"
+type PiezaStatus = "en_espera" | "instalada" | "verificada" | "recibida" | "vendida" | "enviada"
 
-const initialPiezas = [
-  {
-    id: "1",
-    nombre: "Cubierta Cocina",
-    material: "Calacatta Gold",
-    dimensiones: "240 x 60 cm",
-    sku: "CK-CAL-001",
-    estatus: "en_espera" as PiezaStatus,
-    espesor: "3 cm",
-  },
-  {
-    id: "2",
-    nombre: "Piso Vestibulo A",
-    material: "Nero Marquina",
-    dimensiones: "60 x 60 cm",
-    sku: "PV-NER-012",
-    estatus: "instalada" as PiezaStatus,
-    espesor: "2 cm",
-  },
-  {
-    id: "3",
-    nombre: "Encimera Bano Principal",
-    material: "Calacatta Gold",
-    dimensiones: "120 x 55 cm",
-    sku: "EB-CAL-003",
-    estatus: "verificada" as PiezaStatus,
-    espesor: "3 cm",
-  },
-  {
-    id: "4",
-    nombre: "Muro Decorativo Lobby",
-    material: "Blanco Carrara",
-    dimensiones: "240 x 120 cm",
-    sku: "MD-BLC-007",
-    estatus: "recibida" as PiezaStatus,
-    espesor: "2 cm",
-  },
-  {
-    id: "5",
-    nombre: "Barra Cocina",
-    material: "Emperador Dark",
-    dimensiones: "300 x 65 cm",
-    sku: "BC-EMP-002",
-    estatus: "en_espera" as PiezaStatus,
-    espesor: "3 cm",
-  },
-  {
-    id: "6",
-    nombre: "Piso Bano Secundario",
-    material: "Travertino Navona",
-    dimensiones: "45 x 45 cm",
-    sku: "PB-TRV-008",
-    estatus: "instalada" as PiezaStatus,
-    espesor: "2 cm",
-  },
-]
-
-const statusConfig: Record<PiezaStatus, { label: string; color: string; action: string }> = {
+const statusConfig: Record<string, { label: string; color: string; action: string }> = {
   en_espera: { label: "EN ESPERA", color: "bg-semaforo-amarillo/15 text-semaforo-amarillo", action: "Marcar Instalada" },
   recibida: { label: "RECIBIDA", color: "bg-blue-400/15 text-blue-400", action: "Marcar Instalada" },
+  vendida: { label: "VENDIDA", color: "bg-marble-200 text-marble-600", action: "" },
+  enviada: { label: "ENVIADA", color: "bg-blue-500/15 text-blue-500", action: "" },
   instalada: { label: "INSTALADA", color: "bg-blue-500/15 text-blue-500", action: "Verificar Instalacion" },
   verificada: { label: "VERIFICADA", color: "bg-semaforo-verde/15 text-semaforo-verde", action: "Verificada" },
 }
@@ -86,45 +35,98 @@ const statusConfig: Record<PiezaStatus, { label: string; color: string; action: 
 export default function ObraDashboardPage() {
   const { toast } = useToast()
   const [search, setSearch] = useState("")
-  const [piezas, setPiezas] = useState(initialPiezas)
+  const [loading, setLoading] = useState(true)
+  const [obra, setObra] = useState<any>(null)
+  const [conceptos, setConceptos] = useState<any[]>([])
+  const [remisiones, setRemisiones] = useState<any[]>([])
+  const [noObra, setNoObra] = useState(false)
 
-  const filtered = piezas.filter((p) => {
-    if (!search) return true
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        setNoObra(true)
+        return
+      }
+
+      const { data: obraData } = await supabase
+        .from("obras")
+        .select("*")
+        .eq("residente_id", user.id)
+        .eq("estatus", "activa")
+        .single()
+
+      if (!obraData) {
+        setLoading(false)
+        setNoObra(true)
+        return
+      }
+
+      setObra(obraData)
+
+      const [conceptosRes, remisionesRes] = await Promise.all([
+        supabase
+          .from("conceptos_obra")
+          .select("*, piezas(*)")
+          .eq("obra_id", obraData.id),
+        supabase
+          .from("remisiones")
+          .select("*, chofer:users!chofer_id(nombre)")
+          .eq("obra_id", obraData.id)
+          .order("created_at", { ascending: false })
+          .limit(5),
+      ])
+
+      setConceptos(conceptosRes.data || [])
+      setRemisiones(remisionesRes.data || [])
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  if (loading) {
     return (
-      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      p.material.toLowerCase().includes(search.toLowerCase()) ||
-      p.sku.toLowerCase().includes(search.toLowerCase())
+      <div className="min-h-screen bg-[#FAF9F7] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-golden" />
+      </div>
     )
-  })
+  }
+
+  if (noObra) {
+    return (
+      <div className="min-h-screen bg-[#FAF9F7] flex flex-col items-center justify-center px-5">
+        <Package className="h-12 w-12 text-marble-300" />
+        <p className="mt-3 text-sm font-medium text-marble-500">No tiene obra asignada</p>
+        <p className="mt-1 text-xs text-marble-400">Contacte al administrador para que le asigne una obra.</p>
+      </div>
+    )
+  }
+
+  // Compute stats from conceptos with piezas
+  const allPiezas = conceptos.flatMap((c: any) => c.piezas || [])
+  const vendidas = allPiezas.filter((p: any) => ["vendida", "enviada", "recibida", "instalada", "verificada"].includes(p.estatus)).length
+  const enviadas = allPiezas.filter((p: any) => ["enviada", "recibida", "instalada", "verificada"].includes(p.estatus)).length
+  const instaladas = allPiezas.filter((p: any) => ["instalada", "verificada"].includes(p.estatus)).length
+  const verificadas = allPiezas.filter((p: any) => p.estatus === "verificada").length
 
   const stats = [
-    { label: "RECIBIDAS", value: piezas.filter((p) => p.estatus === "recibida" || p.estatus === "en_espera").length + piezas.filter((p) => p.estatus === "instalada").length + piezas.filter((p) => p.estatus === "verificada").length, color: "text-marble-900" },
-    { label: "INSTALADAS", value: piezas.filter((p) => p.estatus === "instalada").length + piezas.filter((p) => p.estatus === "verificada").length, color: "text-golden" },
-    { label: "VERIFICADAS", value: piezas.filter((p) => p.estatus === "verificada").length, color: "text-semaforo-verde" },
+    { label: "VENDIDAS", value: vendidas, color: "text-marble-900" },
+    { label: "ENVIADAS", value: enviadas, color: "text-blue-500" },
+    { label: "INSTALADAS", value: instaladas, color: "text-golden" },
+    { label: "VERIFICADAS", value: verificadas, color: "text-semaforo-verde" },
   ]
 
-  const handleAction = (id: string) => {
-    const pieza = piezas.find((p) => p.id === id)
-    if (!pieza) return
-
-    if (pieza.estatus === "en_espera" || pieza.estatus === "recibida") {
-      setPiezas((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, estatus: "instalada" as PiezaStatus } : p))
-      )
-      toast({
-        title: "Pieza instalada",
-        description: `${pieza.nombre} marcada como instalada`,
-      })
-    } else if (pieza.estatus === "instalada") {
-      setPiezas((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, estatus: "verificada" as PiezaStatus } : p))
-      )
-      toast({
-        title: "Instalacion verificada",
-        description: `${pieza.nombre} verificada exitosamente`,
-      })
-    }
-  }
+  const filtered = allPiezas.filter((p: any) => {
+    if (!search) return true
+    const s = search.toLowerCase()
+    return (
+      (p.nombre || "").toLowerCase().includes(s) ||
+      (p.material || "").toLowerCase().includes(s) ||
+      (p.sku || "").toLowerCase().includes(s)
+    )
+  })
 
   return (
     <div className="min-h-screen bg-[#FAF9F7]">
@@ -152,14 +154,14 @@ export default function ObraDashboardPage() {
         <div className="mt-4">
           <h1 className="text-xl font-bold text-white">Residente de Obra</h1>
           <p className="mt-0.5 text-xs tracking-wide text-marble-400">
-            Torre Lujo - Etapa 4
+            {obra?.nombre || "Obra"} {obra?.cliente ? `- ${obra.cliente}` : ""}
           </p>
         </div>
       </header>
 
       <div className="px-5 pb-6">
         {/* Stats */}
-        <div className="-mt-4 grid grid-cols-3 gap-2">
+        <div className="-mt-4 grid grid-cols-4 gap-2">
           {stats.map((stat) => (
             <div
               key={stat.label}
@@ -184,6 +186,48 @@ export default function ObraDashboardPage() {
           />
         </div>
 
+        {/* Recent Remisiones */}
+        {remisiones.length > 0 && (
+          <div className="mt-6">
+            <h2 className="mb-3 text-xs font-semibold tracking-widest text-marble-500 uppercase">
+              Remisiones Recientes
+            </h2>
+            <div className="space-y-2">
+              {remisiones.map((rem: any) => (
+                <div
+                  key={rem.id}
+                  className="flex items-center gap-3 rounded-xl border border-marble-200 bg-white p-3 shadow-sm"
+                >
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-marble-100">
+                    <Truck className="h-4 w-4 text-marble-400" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-marble-900 truncate">
+                      REM #{rem.folio || rem.id.slice(0, 6)}
+                    </p>
+                    <div className="flex items-center gap-2 text-[11px] text-marble-400">
+                      <span>{rem.chofer?.nombre || "Sin chofer"}</span>
+                      <span className="flex items-center gap-0.5">
+                        <Clock className="h-3 w-3" />
+                        {new Date(rem.created_at).toLocaleDateString("es-MX")}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                    rem.estatus === "entregada"
+                      ? "bg-semaforo-verde/15 text-semaforo-verde"
+                      : rem.estatus === "en_transito"
+                      ? "bg-semaforo-amarillo/15 text-semaforo-amarillo"
+                      : "bg-marble-200 text-marble-600"
+                  }`}>
+                    {(rem.estatus || "").toUpperCase().replace("_", " ")}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Inventory Section */}
         <div className="mt-6">
           <h2 className="mb-3 text-xs font-semibold tracking-widest text-marble-500 uppercase">
@@ -191,8 +235,8 @@ export default function ObraDashboardPage() {
           </h2>
 
           <div className="space-y-3">
-            {filtered.map((pieza) => {
-              const status = statusConfig[pieza.estatus]
+            {filtered.map((pieza: any) => {
+              const status = statusConfig[pieza.estatus] || { label: pieza.estatus?.toUpperCase() || "—", color: "bg-marble-200 text-marble-600", action: "" }
               return (
                 <div
                   key={pieza.id}
@@ -208,7 +252,7 @@ export default function ObraDashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div>
-                          <p className="text-sm font-bold text-marble-900">{pieza.nombre}</p>
+                          <p className="text-sm font-bold text-marble-900">{pieza.nombre || pieza.tipo_pieza}</p>
                           <p className="text-xs font-medium text-golden">{pieza.material}</p>
                         </div>
                         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.color}`}>
@@ -216,32 +260,19 @@ export default function ObraDashboardPage() {
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-marble-500">
-                        <span className="flex items-center gap-0.5">
-                          <Ruler className="h-3 w-3" /> {pieza.dimensiones}
-                        </span>
-                        <span className="flex items-center gap-0.5">
-                          <Hash className="h-3 w-3" /> {pieza.sku}
-                        </span>
+                        {pieza.dimensiones && (
+                          <span className="flex items-center gap-0.5">
+                            <Ruler className="h-3 w-3" /> {pieza.dimensiones}
+                          </span>
+                        )}
+                        {pieza.sku && (
+                          <span className="flex items-center gap-0.5">
+                            <Hash className="h-3 w-3" /> {pieza.sku}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
-
-                  {/* Action Button */}
-                  {pieza.estatus !== "verificada" && (
-                    <div className="border-t border-marble-100 px-4 py-2.5">
-                      <button
-                        onClick={() => handleAction(pieza.id)}
-                        className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-golden/10 py-2 text-xs font-semibold text-golden active:bg-golden/20 transition-colors"
-                      >
-                        {pieza.estatus === "en_espera" || pieza.estatus === "recibida" ? (
-                          <CheckCircle2 className="h-3.5 w-3.5" />
-                        ) : (
-                          <ShieldCheck className="h-3.5 w-3.5" />
-                        )}
-                        {status.action}
-                      </button>
-                    </div>
-                  )}
 
                   {pieza.estatus === "verificada" && (
                     <div className="border-t border-marble-100 px-4 py-2.5">

@@ -1,6 +1,6 @@
 "use client"
 
-import React from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   Bell,
@@ -13,50 +13,9 @@ import {
   Clock,
   Package,
   Truck,
+  Loader2,
 } from "lucide-react"
-
-const remisionesRecientes = [
-  {
-    id: "1",
-    folio: "REM #29441",
-    material: "Calacatta Gold",
-    lote: "LOT-2026-089",
-    piezas: 12,
-    m2: 34.5,
-    estatus: "en_transito" as const,
-    hora: "08:30",
-  },
-  {
-    id: "2",
-    folio: "REM #29440",
-    material: "Nero Marquina",
-    lote: "LOT-2026-088",
-    piezas: 8,
-    m2: 22.1,
-    estatus: "entregada" as const,
-    hora: "07:15",
-  },
-  {
-    id: "3",
-    folio: "REM #29439",
-    material: "Blanco Carrara",
-    lote: "LOT-2026-087",
-    piezas: 15,
-    m2: 41.8,
-    estatus: "creada" as const,
-    hora: "Ayer",
-  },
-  {
-    id: "4",
-    folio: "REM #29438",
-    material: "Emperador Dark",
-    lote: "LOT-2026-086",
-    piezas: 6,
-    m2: 18.2,
-    estatus: "entregada" as const,
-    hora: "Ayer",
-  },
-]
+import { createClient } from "@/lib/supabase/client"
 
 const estatusConfig = {
   creada: { label: "CREADA", color: "bg-marble-200 text-marble-600" },
@@ -65,6 +24,39 @@ const estatusConfig = {
 }
 
 export default function TallerDashboardPage() {
+  const [remisionesRecientes, setRemisionesRecientes] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchRemisiones() {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("remisiones")
+        .select("*, items:remision_items(cantidad, concepto:conceptos_obra(tipo_pieza, material_tipo))")
+        .order("created_at", { ascending: false })
+        .limit(4)
+
+      if (!error && data) {
+        setRemisionesRecientes(data.map((r: any) => {
+          const totalPiezas = r.items?.reduce((sum: number, i: any) => sum + i.cantidad, 0) ?? 0
+          const material = r.items?.[0]?.concepto?.material_tipo ?? "—"
+          return {
+            id: r.id,
+            folio: r.folio,
+            material: material,
+            lote: "",
+            piezas: totalPiezas,
+            m2: 0,
+            estatus: r.estatus,
+            hora: new Date(r.created_at).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" }),
+          }
+        }))
+      }
+      setLoading(false)
+    }
+    fetchRemisiones()
+  }, [])
+
   return (
     <div className="min-h-screen bg-[#FAF9F7]">
       {/* Dark Header */}
@@ -157,38 +149,50 @@ export default function TallerDashboardPage() {
           </div>
 
           <div className="space-y-2">
-            {remisionesRecientes.map((rem) => {
-              const status = estatusConfig[rem.estatus]
-              return (
-                <div
-                  key={rem.id}
-                  className="rounded-xl border border-marble-200 bg-white p-4 shadow-sm active:bg-marble-50 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-bold text-marble-900">{rem.folio}</p>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.color}`}>
-                          {status.label}
-                        </span>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-marble-400" />
+              </div>
+            ) : remisionesRecientes.length === 0 ? (
+              <div className="flex items-center justify-center rounded-xl border border-marble-200 bg-white py-8">
+                <p className="text-sm text-marble-400">Sin remisiones recientes</p>
+              </div>
+            ) : (
+              remisionesRecientes.map((rem) => {
+                const status = estatusConfig[rem.estatus as keyof typeof estatusConfig]
+                return (
+                  <div
+                    key={rem.id}
+                    className="rounded-xl border border-marble-200 bg-white p-4 shadow-sm active:bg-marble-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-marble-900">{rem.folio}</p>
+                          {status && (
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.color}`}>
+                              {status.label}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-marble-700">{rem.material}</p>
+                        <p className="text-xs text-marble-400">{rem.lote}</p>
                       </div>
-                      <p className="mt-1 text-sm font-medium text-marble-700">{rem.material}</p>
-                      <p className="text-xs text-marble-400">{rem.lote}</p>
+                      <ChevronRight className="h-5 w-5 text-marble-300 mt-0.5" />
                     </div>
-                    <ChevronRight className="h-5 w-5 text-marble-300 mt-0.5" />
+                    <div className="mt-2 flex items-center gap-3 border-t border-marble-100 pt-2 text-[11px] text-marble-400">
+                      <span className="flex items-center gap-1">
+                        <Package className="h-3 w-3" /> {rem.piezas} piezas
+                      </span>
+                      <span>{rem.m2} m²</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {rem.hora}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-2 flex items-center gap-3 border-t border-marble-100 pt-2 text-[11px] text-marble-400">
-                    <span className="flex items-center gap-1">
-                      <Package className="h-3 w-3" /> {rem.piezas} piezas
-                    </span>
-                    <span>{rem.m2} m²</span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> {rem.hora}
-                    </span>
-                  </div>
-                </div>
-              )
-            })}
+                )
+              })
+            )}
           </div>
         </div>
       </div>

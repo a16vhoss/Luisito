@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -15,73 +15,12 @@ import {
   Play,
   Pause,
   Filter,
+  Loader2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 type PiezaWorkStatus = "por_iniciar" | "en_proceso" | "pausada" | "completada" | "bloqueada"
-
-const initialPiezas = [
-  {
-    id: "1",
-    tipo: "CORTE DIAMANTE",
-    numero: "#2849",
-    nombre: "Encimera Calacatta Gold",
-    obra: "Torre Lujo - Etapa 4",
-    medidas: "240 x 60 x 3 cm",
-    acabado: "Pulido Espejo",
-    estatus: "por_iniciar" as PiezaWorkStatus,
-    prioridad: "alta",
-  },
-  {
-    id: "2",
-    tipo: "PULIDO",
-    numero: "#2847",
-    nombre: "Cubierta Nero Marquina",
-    obra: "Residencial Playa",
-    medidas: "180 x 55 x 2 cm",
-    acabado: "Mate",
-    estatus: "en_proceso" as PiezaWorkStatus,
-    prioridad: "media",
-    tiempoTranscurrido: "2h 15m",
-  },
-  {
-    id: "3",
-    tipo: "CORTE CNC",
-    numero: "#2846",
-    nombre: "Lavabo Integrado Carrara",
-    obra: "Torre Lujo - Etapa 4",
-    medidas: "80 x 50 x 3 cm",
-    acabado: "Pulido Espejo",
-    estatus: "pausada" as PiezaWorkStatus,
-    prioridad: "alta",
-    tiempoTranscurrido: "1h 30m",
-    motivo: "Cambio de disco",
-  },
-  {
-    id: "4",
-    tipo: "ACABADO BORDES",
-    numero: "#2844",
-    nombre: "Muro Blanco Carrara",
-    obra: "Hotel Grand Paradise",
-    medidas: "240 x 120 x 2 cm",
-    acabado: "Biselado",
-    estatus: "completada" as PiezaWorkStatus,
-    prioridad: "baja",
-    tiempoTotal: "4h 20m",
-  },
-  {
-    id: "5",
-    tipo: "CORTE DIAMANTE",
-    numero: "#2843",
-    nombre: "Piso Emperador Dark",
-    obra: "Residencial Playa",
-    medidas: "60 x 60 x 2 cm",
-    acabado: "Pulido",
-    estatus: "bloqueada" as PiezaWorkStatus,
-    prioridad: "media",
-    motivo: "En espera de material",
-  },
-]
 
 const statusConfig: Record<PiezaWorkStatus, { label: string; color: string; bg: string }> = {
   por_iniciar: { label: "POR INICIAR", color: "text-golden", bg: "bg-golden/15" },
@@ -91,31 +30,137 @@ const statusConfig: Record<PiezaWorkStatus, { label: string; color: string; bg: 
   bloqueada: { label: "BLOQUEADA", color: "text-semaforo-rojo", bg: "bg-semaforo-rojo/15" },
 }
 
-const prioridadConfig = {
+const prioridadConfig: Record<string, string> = {
   alta: "border-l-semaforo-rojo",
   media: "border-l-semaforo-amarillo",
   baja: "border-l-semaforo-verde",
 }
 
+interface PiezaFromDB {
+  id: string
+  estatus: string
+  prioridad: string | null
+  tiempo_transcurrido: string | null
+  tiempo_total: string | null
+  motivo_pausa: string | null
+  concepto: {
+    tipo_pieza: string | null
+    material_tipo: string | null
+    medida_largo: number | null
+    medida_ancho: number | null
+    obra: {
+      nombre: string | null
+    } | null
+  } | null
+}
+
+interface PiezaDisplay {
+  id: string
+  tipo: string
+  nombre: string
+  obra: string
+  medidas: string
+  acabado: string
+  estatus: PiezaWorkStatus
+  prioridad: string
+  tiempoTranscurrido?: string
+  tiempoTotal?: string
+  motivo?: string
+}
+
 export default function ObraMarmoleroPage() {
   const { toast } = useToast()
   const [filter, setFilter] = useState<"todas" | PiezaWorkStatus>("todas")
-  const [piezas, setPiezas] = useState(initialPiezas)
+  const [piezas, setPiezas] = useState<PiezaDisplay[]>([])
+  const [loading, setLoading] = useState(true)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  const supabase = createClient()
+
+  const fetchPiezas = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    setUserId(user.id)
+
+    const { data, error } = await supabase
+      .from("piezas")
+      .select("*, concepto:conceptos_obra(tipo_pieza, material_tipo, medida_largo, medida_ancho, obra:obras(nombre))")
+      .eq("asignado_a", user.id)
+      .not("estatus", "eq", "instalada")
+      .order("created_at", { ascending: false })
+
+    if (error) {
+      console.error("Error fetching piezas:", error)
+      setLoading(false)
+      return
+    }
+
+    if (data) {
+      const mapped: PiezaDisplay[] = data.map((p: PiezaFromDB) => {
+        const concepto = p.concepto
+        const largo = concepto?.medida_largo || 0
+        const ancho = concepto?.medida_ancho || 0
+        return {
+          id: p.id,
+          tipo: concepto?.tipo_pieza || "PIEZA",
+          nombre: concepto?.material_tipo || "Sin nombre",
+          obra: concepto?.obra?.nombre || "Sin obra",
+          medidas: `${largo} x ${ancho} cm`,
+          acabado: concepto?.material_tipo || "--",
+          estatus: (p.estatus as PiezaWorkStatus) || "por_iniciar",
+          prioridad: p.prioridad || "media",
+          tiempoTranscurrido: p.tiempo_transcurrido || undefined,
+          tiempoTotal: p.tiempo_total || undefined,
+          motivo: p.motivo_pausa || undefined,
+        }
+      })
+      setPiezas(mapped)
+    }
+
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    fetchPiezas()
+  }, [fetchPiezas])
 
   const filtered = piezas.filter(
     (p) => filter === "todas" || p.estatus === filter
   )
 
-  const updatePiezaStatus = (id: string, newStatus: PiezaWorkStatus, toastTitle: string) => {
+  const updatePiezaStatus = async (id: string, newStatus: PiezaWorkStatus, toastTitle: string) => {
     const pieza = piezas.find((p) => p.id === id)
     if (!pieza) return
+
+    const { error } = await supabase
+      .from("piezas")
+      .update({ estatus: newStatus })
+      .eq("id", id)
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
+      return
+    }
+
     setPiezas((prev) =>
       prev.map((p) => (p.id === id ? { ...p, estatus: newStatus } : p))
     )
     toast({
       title: toastTitle,
-      description: `Pieza ${pieza.numero} ${newStatus === "en_proceso" ? "en proceso" : newStatus === "pausada" ? "pausada" : newStatus === "completada" ? "completada" : newStatus}`,
+      description: `Pieza ${pieza.tipo} ${newStatus === "en_proceso" ? "en proceso" : newStatus === "pausada" ? "pausada" : newStatus === "completada" ? "completada" : newStatus}`,
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-marble-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-golden" />
+      </div>
+    )
   }
 
   return (
@@ -184,7 +229,7 @@ export default function ObraMarmoleroPage() {
             return (
               <div
                 key={pieza.id}
-                className={`rounded-2xl border border-marble-800 bg-marble-900 overflow-hidden border-l-4 ${prioridadConfig[pieza.prioridad as keyof typeof prioridadConfig]}`}
+                className={`rounded-2xl border border-marble-800 bg-marble-900 overflow-hidden border-l-4 ${prioridadConfig[pieza.prioridad] || "border-l-marble-600"}`}
               >
                 <div className="p-4">
                   {/* Header row */}
@@ -196,7 +241,6 @@ export default function ObraMarmoleroPage() {
                       <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${pStatus.bg} ${pStatus.color}`}>
                         {pStatus.label}
                       </span>
-                      <span className="text-xs font-semibold text-marble-500">{pieza.numero}</span>
                     </div>
                   </div>
 
@@ -216,19 +260,19 @@ export default function ObraMarmoleroPage() {
                   </div>
 
                   {/* Time / Motivo */}
-                  {"tiempoTranscurrido" in pieza && pieza.tiempoTranscurrido && (
+                  {pieza.tiempoTranscurrido && (
                     <div className="mt-2 flex items-center gap-1.5 text-[11px] text-marble-400">
                       <Clock className="h-3 w-3" />
                       <span>Tiempo: <span className="font-medium text-marble-200">{pieza.tiempoTranscurrido}</span></span>
                     </div>
                   )}
-                  {"tiempoTotal" in pieza && pieza.tiempoTotal && (
+                  {pieza.tiempoTotal && (
                     <div className="mt-2 flex items-center gap-1.5 text-[11px] text-semaforo-verde">
                       <CheckCircle2 className="h-3 w-3" />
                       <span>Tiempo total: {pieza.tiempoTotal}</span>
                     </div>
                   )}
-                  {"motivo" in pieza && pieza.motivo && pieza.estatus !== "completada" && (
+                  {pieza.motivo && pieza.estatus !== "completada" && (
                     <div className="mt-2 flex items-center gap-1.5 text-[11px] text-semaforo-amarillo">
                       <AlertCircle className="h-3 w-3" />
                       <span>{pieza.motivo}</span>
@@ -292,7 +336,9 @@ export default function ObraMarmoleroPage() {
         {filtered.length === 0 && (
           <div className="mt-12 text-center">
             <Hammer className="mx-auto h-10 w-10 text-marble-700" />
-            <p className="mt-2 text-sm text-marble-500">No hay piezas con este filtro</p>
+            <p className="mt-2 text-sm text-marble-500">
+              {piezas.length === 0 ? "No tienes piezas asignadas" : "No hay piezas con este filtro"}
+            </p>
           </div>
         )}
       </div>

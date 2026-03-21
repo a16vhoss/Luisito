@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import {
   Package,
   TrendingUp,
@@ -9,66 +10,11 @@ import {
   ArrowDownRight,
   Warehouse,
   Clock,
+  Loader2,
 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
 
-// ── Datos ──
-const summaryCards = [
-  {
-    title: "Total Materiales",
-    value: "1,248",
-    change: "+12%",
-    trend: "up" as const,
-    icon: Package,
-    color: "bg-blue-50 text-blue-600",
-  },
-  {
-    title: "Valor en Inventario",
-    value: "$2,450,800",
-    change: "+5.3%",
-    trend: "up" as const,
-    icon: Warehouse,
-    color: "bg-emerald-50 text-emerald-600",
-  },
-  {
-    title: "Órdenes Pendientes",
-    value: "7",
-    change: "-2",
-    trend: "down" as const,
-    icon: ShoppingCart,
-    color: "bg-amber-50 text-amber-600",
-  },
-  {
-    title: "Alertas de Stock",
-    value: "4",
-    change: "+1",
-    trend: "up" as const,
-    icon: AlertTriangle,
-    color: "bg-red-50 text-red-600",
-  },
-]
-
-const recentOrders = [
-  { folio: "OC-2026-00034", proveedor: "Mármoles del Sureste", total: "$84,500", estatus: "pendiente", fecha: "18 Mar 2026" },
-  { folio: "OC-2026-00033", proveedor: "Insumos Industriales MX", total: "$12,300", estatus: "aprobada", fecha: "17 Mar 2026" },
-  { folio: "OC-2026-00032", proveedor: "Herramientas ProCut", total: "$45,000", estatus: "recibida", fecha: "15 Mar 2026" },
-  { folio: "OC-2026-00031", proveedor: "Canteras Nacional", total: "$156,200", estatus: "aprobada", fecha: "14 Mar 2026" },
-  { folio: "OC-2026-00030", proveedor: "Química del Caribe", total: "$8,750", estatus: "recibida", fecha: "12 Mar 2026" },
-]
-
-const stockAlerts = [
-  { material: "Lámina Crema Marfil 2cm", stock: 3, minimo: 10, unidad: "piezas" },
-  { material: "Disco Diamante 14\"", stock: 2, minimo: 5, unidad: "piezas" },
-  { material: "Resina Epóxica Transparente", stock: 4, minimo: 8, unidad: "litros" },
-  { material: "Lija de Agua #400", stock: 15, minimo: 30, unidad: "piezas" },
-]
-
-const recentMovements = [
-  { material: "Mármol Blanco Carrara", tipo: "entrada", cantidad: 5, responsable: "Laura Castro", fecha: "19 Mar 10:30" },
-  { material: "Disco Diamante 10\"", tipo: "salida", cantidad: 3, responsable: "Laura Castro", fecha: "19 Mar 09:15" },
-  { material: "Pegamento Piedra Natural", tipo: "entrada", cantidad: 20, responsable: "Laura Castro", fecha: "18 Mar 16:00" },
-  { material: "Lámina Travertino", tipo: "salida", cantidad: 2, responsable: "Laura Castro", fecha: "18 Mar 14:20" },
-]
-
+// ── Estilos de estatus ──
 const statusColors: Record<string, string> = {
   pendiente: "bg-amber-100 text-amber-700",
   aprobada: "bg-blue-100 text-blue-700",
@@ -76,7 +22,170 @@ const statusColors: Record<string, string> = {
   cancelada: "bg-red-100 text-red-700",
 }
 
+type SummaryCard = {
+  title: string
+  value: string
+  icon: typeof Package
+  color: string
+}
+
+type StockAlert = {
+  material: string
+  stock: number
+  minimo: number
+  unidad: string
+}
+
+type RecentOrder = {
+  folio: string
+  proveedor: string
+  total: string
+  estatus: string
+  fecha: string
+}
+
+type RecentMovement = {
+  material: string
+  tipo: string
+  cantidad: number
+  responsable: string
+  fecha: string
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value)
+}
+
+function formatDate(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
+}
+
+function formatDateShort(dateStr: string): string {
+  const d = new Date(dateStr)
+  return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short" }) +
+    " " +
+    d.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
+}
+
 export default function AdminDashboardPage() {
+  const [loading, setLoading] = useState(true)
+  const [summaryCards, setSummaryCards] = useState<SummaryCard[]>([])
+  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([])
+  const [stockAlerts, setStockAlerts] = useState<StockAlert[]>([])
+  const [recentMovements, setRecentMovements] = useState<RecentMovement[]>([])
+
+  useEffect(() => {
+    async function fetchDashboard() {
+      const supabase = createClient()
+
+      const [materialesRes, ordenesRes, movimientosRes] = await Promise.all([
+        supabase.from("materiales").select("*").eq("activo", true),
+        supabase
+          .from("ordenes_compra")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("movimientos_almacen")
+          .select("*, material:materiales(nombre), responsable:users(nombre)")
+          .order("created_at", { ascending: false })
+          .limit(4),
+      ])
+
+      const materiales = materialesRes.data ?? []
+      const ordenes = ordenesRes.data ?? []
+      const movimientos = movimientosRes.data ?? []
+
+      // Summary cards
+      const totalMateriales = materiales.length
+      const valorInventario = materiales.reduce(
+        (sum: number, m: any) => sum + (m.stock_actual ?? 0) * (m.precio_referencia ?? 0),
+        0
+      )
+      const ordenesPendientes = ordenes.filter((o: any) => o.estatus === "pendiente").length
+      const alertasStock = materiales.filter(
+        (m: any) => (m.stock_actual ?? 0) < (m.stock_minimo ?? 0)
+      )
+
+      setSummaryCards([
+        {
+          title: "Total Materiales",
+          value: totalMateriales.toLocaleString("es-MX"),
+          icon: Package,
+          color: "bg-blue-50 text-blue-600",
+        },
+        {
+          title: "Valor en Inventario",
+          value: formatCurrency(valorInventario),
+          icon: Warehouse,
+          color: "bg-emerald-50 text-emerald-600",
+        },
+        {
+          title: "Órdenes Pendientes",
+          value: ordenesPendientes.toString(),
+          icon: ShoppingCart,
+          color: "bg-amber-50 text-amber-600",
+        },
+        {
+          title: "Alertas de Stock",
+          value: alertasStock.length.toString(),
+          icon: AlertTriangle,
+          color: "bg-red-50 text-red-600",
+        },
+      ])
+
+      // Stock alerts
+      setStockAlerts(
+        alertasStock.map((m: any) => ({
+          material: m.nombre ?? "Sin nombre",
+          stock: m.stock_actual ?? 0,
+          minimo: m.stock_minimo ?? 0,
+          unidad: m.unidad_medida ?? "piezas",
+        }))
+      )
+
+      // Recent orders
+      setRecentOrders(
+        ordenes.map((o: any) => ({
+          folio: o.folio ?? "—",
+          proveedor: o.proveedor ?? "—",
+          total: formatCurrency(o.total ?? 0),
+          estatus: o.estatus ?? "pendiente",
+          fecha: o.created_at ? formatDate(o.created_at) : "—",
+        }))
+      )
+
+      // Recent movements
+      setRecentMovements(
+        movimientos.map((m: any) => ({
+          material: m.material?.nombre ?? "Sin nombre",
+          tipo: m.tipo ?? "entrada",
+          cantidad: m.cantidad ?? 0,
+          responsable: m.responsable?.nombre ?? "—",
+          fecha: m.created_at ? formatDateShort(m.created_at) : "—",
+        }))
+      )
+
+      setLoading(false)
+    }
+
+    fetchDashboard()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -102,15 +211,7 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <div className="mt-3 flex items-center gap-1 text-xs">
-              {card.trend === "up" ? (
-                <ArrowUpRight className="h-3 w-3 text-emerald-500" />
-              ) : (
-                <ArrowDownRight className="h-3 w-3 text-red-500" />
-              )}
-              <span className={card.trend === "up" ? "text-emerald-600" : "text-red-600"}>
-                {card.change}
-              </span>
-              <span className="text-[#7A6D5A]">vs mes anterior</span>
+              <span className="text-[#7A6D5A]">—</span>
             </div>
           </div>
         ))}
@@ -138,19 +239,27 @@ export default function AdminDashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentOrders.map((order) => (
-                  <tr key={order.folio} className="border-b border-[#F0EDE8] hover:bg-[#FAF9F7]">
-                    <td className="px-5 py-3 font-mono text-xs font-medium text-[#1E1A14]">{order.folio}</td>
-                    <td className="px-5 py-3 text-[#1E1A14]">{order.proveedor}</td>
-                    <td className="px-5 py-3 font-medium text-[#1E1A14]">{order.total}</td>
-                    <td className="px-5 py-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[order.estatus]}`}>
-                        {order.estatus.charAt(0).toUpperCase() + order.estatus.slice(1)}
-                      </span>
+                {recentOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#7A6D5A]">
+                      No hay órdenes recientes
                     </td>
-                    <td className="px-5 py-3 text-[#7A6D5A]">{order.fecha}</td>
                   </tr>
-                ))}
+                ) : (
+                  recentOrders.map((order) => (
+                    <tr key={order.folio} className="border-b border-[#F0EDE8] hover:bg-[#FAF9F7]">
+                      <td className="px-5 py-3 font-mono text-xs font-medium text-[#1E1A14]">{order.folio}</td>
+                      <td className="px-5 py-3 text-[#1E1A14]">{order.proveedor}</td>
+                      <td className="px-5 py-3 font-medium text-[#1E1A14]">{order.total}</td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[order.estatus] ?? ""}`}>
+                          {order.estatus.charAt(0).toUpperCase() + order.estatus.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-[#7A6D5A]">{order.fecha}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -165,25 +274,31 @@ export default function AdminDashboardPage() {
             </a>
           </div>
           <div className="divide-y divide-[#F0EDE8]">
-            {stockAlerts.map((alert, i) => (
-              <div key={i} className="flex items-start gap-3 px-5 py-4">
-                <div className="mt-0.5 rounded-lg bg-red-50 p-1.5">
-                  <AlertTriangle className="h-4 w-4 text-red-500" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="truncate text-sm font-medium text-[#1E1A14]">{alert.material}</p>
-                  <p className="text-xs text-[#7A6D5A]">
-                    Stock: <span className="font-semibold text-red-600">{alert.stock}</span> / Mín: {alert.minimo} {alert.unidad}
-                  </p>
-                  <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#F0EDE8]">
-                    <div
-                      className="h-1.5 rounded-full bg-red-400"
-                      style={{ width: `${Math.min((alert.stock / alert.minimo) * 100, 100)}%` }}
-                    />
+            {stockAlerts.length === 0 ? (
+              <div className="px-5 py-8 text-center text-sm text-[#7A6D5A]">
+                No hay alertas de stock
+              </div>
+            ) : (
+              stockAlerts.map((alert, i) => (
+                <div key={i} className="flex items-start gap-3 px-5 py-4">
+                  <div className="mt-0.5 rounded-lg bg-red-50 p-1.5">
+                    <AlertTriangle className="h-4 w-4 text-red-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate text-sm font-medium text-[#1E1A14]">{alert.material}</p>
+                    <p className="text-xs text-[#7A6D5A]">
+                      Stock: <span className="font-semibold text-red-600">{alert.stock}</span> / Mín: {alert.minimo} {alert.unidad}
+                    </p>
+                    <div className="mt-1.5 h-1.5 w-full rounded-full bg-[#F0EDE8]">
+                      <div
+                        className="h-1.5 rounded-full bg-red-400"
+                        style={{ width: `${Math.min((alert.stock / alert.minimo) * 100, 100)}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -208,35 +323,43 @@ export default function AdminDashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {recentMovements.map((mov, i) => (
-                <tr key={i} className="border-b border-[#F0EDE8] hover:bg-[#FAF9F7]">
-                  <td className="px-5 py-3 font-medium text-[#1E1A14]">{mov.material}</td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        mov.tipo === "entrada"
-                          ? "bg-emerald-100 text-emerald-700"
-                          : "bg-orange-100 text-orange-700"
-                      }`}
-                    >
-                      {mov.tipo === "entrada" ? (
-                        <TrendingUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowUpRight className="h-3 w-3" />
-                      )}
-                      {mov.tipo.charAt(0).toUpperCase() + mov.tipo.slice(1)}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-[#1E1A14]">{mov.cantidad}</td>
-                  <td className="px-5 py-3 text-[#7A6D5A]">{mov.responsable}</td>
-                  <td className="px-5 py-3 text-[#7A6D5A]">
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {mov.fecha}
-                    </span>
+              {recentMovements.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-sm text-[#7A6D5A]">
+                    No hay movimientos recientes
                   </td>
                 </tr>
-              ))}
+              ) : (
+                recentMovements.map((mov, i) => (
+                  <tr key={i} className="border-b border-[#F0EDE8] hover:bg-[#FAF9F7]">
+                    <td className="px-5 py-3 font-medium text-[#1E1A14]">{mov.material}</td>
+                    <td className="px-5 py-3">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          mov.tipo === "entrada"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-orange-100 text-orange-700"
+                        }`}
+                      >
+                        {mov.tipo === "entrada" ? (
+                          <TrendingUp className="h-3 w-3" />
+                        ) : (
+                          <ArrowUpRight className="h-3 w-3" />
+                        )}
+                        {mov.tipo.charAt(0).toUpperCase() + mov.tipo.slice(1)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-[#1E1A14]">{mov.cantidad}</td>
+                    <td className="px-5 py-3 text-[#7A6D5A]">{mov.responsable}</td>
+                    <td className="px-5 py-3 text-[#7A6D5A]">
+                      <span className="inline-flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {mov.fecha}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

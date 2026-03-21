@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { createClient } from "@/lib/supabase/client"
 import {
   Plus,
   Search,
@@ -14,6 +15,7 @@ import {
   ShoppingCart,
   Truck,
   MoreHorizontal,
+  Loader2,
 } from "lucide-react"
 
 // ── Datos ──
@@ -30,17 +32,6 @@ type OrdenCompra = {
   notas: string
 }
 
-const ordenes: OrdenCompra[] = [
-  { id: "1", folio: "OC-2026-00034", proveedor: "Mármoles del Sureste", estatus: "pendiente", total: 84500, items: 3, creadoPor: "Laura Castro", aprobadoPor: null, fecha: "2026-03-18", notas: "Láminas para Torre Esmeralda" },
-  { id: "2", folio: "OC-2026-00033", proveedor: "Insumos Industriales MX", estatus: "aprobada", total: 12300, items: 5, creadoPor: "Laura Castro", aprobadoPor: "Andrée Hossfeldt", fecha: "2026-03-17", notas: "Insumos varios para taller" },
-  { id: "3", folio: "OC-2026-00032", proveedor: "Herramientas ProCut", estatus: "recibida", total: 45000, items: 2, creadoPor: "Laura Castro", aprobadoPor: "Andrée Hossfeldt", fecha: "2026-03-15", notas: "Discos de corte y pulidoras" },
-  { id: "4", folio: "OC-2026-00031", proveedor: "Canteras Nacional", estatus: "aprobada", total: 156200, items: 4, creadoPor: "Laura Castro", aprobadoPor: "Andrée Hossfeldt", fecha: "2026-03-14", notas: "Pedido mensual de láminas" },
-  { id: "5", folio: "OC-2026-00030", proveedor: "Química del Caribe", estatus: "recibida", total: 8750, items: 3, creadoPor: "Laura Castro", aprobadoPor: "Andrée Hossfeldt", fecha: "2026-03-12", notas: "Resinas y pegamentos" },
-  { id: "6", folio: "OC-2026-00029", proveedor: "Mármoles del Sureste", estatus: "recibida", total: 120000, items: 6, creadoPor: "Laura Castro", aprobadoPor: "Andrée Hossfeldt", fecha: "2026-03-10", notas: "Láminas para Residencial Las Palmas" },
-  { id: "7", folio: "OC-2026-00028", proveedor: "Herramientas ProCut", estatus: "cancelada", total: 18500, items: 2, creadoPor: "Laura Castro", aprobadoPor: null, fecha: "2026-03-08", notas: "Duplicada - cancelar" },
-  { id: "8", folio: "OC-2026-00027", proveedor: "Transportes García", estatus: "recibida", total: 5600, items: 1, creadoPor: "Laura Castro", aprobadoPor: "Andrée Hossfeldt", fecha: "2026-03-05", notas: "Combustible para flota" },
-]
-
 const statusConfig: Record<string, { label: string; color: string; icon: typeof Clock }> = {
   pendiente: { label: "Pendiente", color: "bg-amber-100 text-amber-700", icon: Clock },
   aprobada: { label: "Aprobada", color: "bg-blue-100 text-blue-700", icon: CheckCircle2 },
@@ -48,20 +39,64 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   cancelada: { label: "Cancelada", color: "bg-red-100 text-red-700", icon: XCircle },
 }
 
-const summaryCards = [
-  { label: "Pendientes", value: "1", icon: Clock, color: "text-amber-600 bg-amber-50" },
-  { label: "Aprobadas", value: "2", icon: CheckCircle2, color: "text-blue-600 bg-blue-50" },
-  { label: "Total Mes", value: "$450,850", icon: DollarSign, color: "text-emerald-600 bg-emerald-50" },
-  { label: "Proveedores", value: "5", icon: ShoppingCart, color: "text-purple-600 bg-purple-50" },
-]
-
 function formatMoney(n: number) {
   return "$" + n.toLocaleString("es-MX")
 }
 
 export default function ComprasPage() {
+  const [ordenes, setOrdenes] = useState<OrdenCompra[]>([])
+  const [loading, setLoading] = useState(true)
   const [filterEstatus, setFilterEstatus] = useState<string>("todos")
   const [searchTerm, setSearchTerm] = useState("")
+
+  useEffect(() => {
+    async function fetchOrdenes() {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("ordenes_compra")
+        .select("*, creador:users!creado_por(nombre), aprobador:users!aprobado_por(nombre)")
+        .order("created_at", { ascending: false })
+
+      if (!error && data) {
+        setOrdenes(data.map((o: any) => ({
+          id: o.id,
+          folio: o.folio,
+          proveedor: o.proveedor,
+          estatus: o.estatus,
+          total: o.total,
+          items: 0,
+          creadoPor: o.creador?.nombre ?? "—",
+          aprobadoPor: o.aprobador?.nombre ?? null,
+          fecha: o.created_at.split("T")[0],
+          notas: o.notas ?? "",
+        })))
+      }
+      setLoading(false)
+    }
+    fetchOrdenes()
+  }, [])
+
+  // Compute summary cards from live data
+  const now = new Date()
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+
+  const pendientesCount = ordenes.filter((o) => o.estatus === "pendiente").length
+  const aprobadasCount = ordenes.filter((o) => o.estatus === "aprobada").length
+  const totalMes = ordenes
+    .filter((o) => {
+      const d = new Date(o.fecha)
+      return d.getMonth() === currentMonth && d.getFullYear() === currentYear
+    })
+    .reduce((sum, o) => sum + o.total, 0)
+  const proveedoresCount = new Set(ordenes.map((o) => o.proveedor)).size
+
+  const summaryCards = [
+    { label: "Pendientes", value: String(pendientesCount), icon: Clock, color: "text-amber-600 bg-amber-50" },
+    { label: "Aprobadas", value: String(aprobadasCount), icon: CheckCircle2, color: "text-blue-600 bg-blue-50" },
+    { label: "Total Mes", value: formatMoney(totalMes), icon: DollarSign, color: "text-emerald-600 bg-emerald-50" },
+    { label: "Proveedores", value: String(proveedoresCount), icon: ShoppingCart, color: "text-purple-600 bg-purple-50" },
+  ]
 
   const filtered = ordenes.filter((o) => {
     if (filterEstatus !== "todos" && o.estatus !== filterEstatus) return false
@@ -153,45 +188,62 @@ export default function ComprasPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((orden) => {
-                const sc = statusConfig[orden.estatus]
-                const StatusIcon = sc.icon
-                return (
-                  <tr key={orden.id} className="border-b border-[#F0EDE8] hover:bg-[#FAF9F7] transition-colors">
-                    <td className="px-5 py-3">
-                      <span className="font-mono text-xs font-semibold text-[#1E1A14]">{orden.folio}</span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <p className="font-medium text-[#1E1A14]">{orden.proveedor}</p>
-                      <p className="text-xs text-[#7A6D5A] truncate max-w-[200px]">{orden.notas}</p>
-                    </td>
-                    <td className="px-5 py-3 text-center text-[#1E1A14]">{orden.items}</td>
-                    <td className="px-5 py-3 font-semibold text-[#1E1A14]">{formatMoney(orden.total)}</td>
-                    <td className="px-5 py-3">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${sc.color}`}>
-                        <StatusIcon className="h-3 w-3" />
-                        {sc.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-[#7A6D5A]">{orden.creadoPor}</td>
-                    <td className="px-5 py-3 text-[#7A6D5A]">{orden.aprobadoPor ?? "—"}</td>
-                    <td className="px-5 py-3 text-[#7A6D5A] whitespace-nowrap">{orden.fecha}</td>
-                    <td className="px-5 py-3">
-                      <div className="flex items-center gap-1">
-                        <button className="rounded-md p-1.5 text-[#7A6D5A] hover:bg-[#F0EDE8]" title="Ver detalle">
-                          <Eye className="h-4 w-4" />
-                        </button>
-                        <button className="rounded-md p-1.5 text-[#7A6D5A] hover:bg-[#F0EDE8]" title="Descargar PDF">
-                          <FileText className="h-4 w-4" />
-                        </button>
-                        <button className="rounded-md p-1.5 text-[#7A6D5A] hover:bg-[#F0EDE8]" title="Más opciones">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
+              {loading ? (
+                <tr>
+                  <td colSpan={9} className="px-5 py-12 text-center">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-[#7A6D5A]" />
+                    <p className="mt-2 text-sm text-[#7A6D5A]">Cargando órdenes...</p>
+                  </td>
+                </tr>
+              ) : filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-5 py-12 text-center">
+                    <ShoppingCart className="mx-auto h-8 w-8 text-[#E0DBD1]" />
+                    <p className="mt-2 text-sm font-medium text-[#1E1A14]">Sin órdenes</p>
+                    <p className="text-xs text-[#7A6D5A]">No se encontraron órdenes con los filtros seleccionados.</p>
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((orden) => {
+                  const sc = statusConfig[orden.estatus]
+                  const StatusIcon = sc.icon
+                  return (
+                    <tr key={orden.id} className="border-b border-[#F0EDE8] hover:bg-[#FAF9F7] transition-colors">
+                      <td className="px-5 py-3">
+                        <span className="font-mono text-xs font-semibold text-[#1E1A14]">{orden.folio}</span>
+                      </td>
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-[#1E1A14]">{orden.proveedor}</p>
+                        <p className="text-xs text-[#7A6D5A] truncate max-w-[200px]">{orden.notas}</p>
+                      </td>
+                      <td className="px-5 py-3 text-center text-[#1E1A14]">{orden.items}</td>
+                      <td className="px-5 py-3 font-semibold text-[#1E1A14]">{formatMoney(orden.total)}</td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${sc.color}`}>
+                          <StatusIcon className="h-3 w-3" />
+                          {sc.label}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-[#7A6D5A]">{orden.creadoPor}</td>
+                      <td className="px-5 py-3 text-[#7A6D5A]">{orden.aprobadoPor ?? "—"}</td>
+                      <td className="px-5 py-3 text-[#7A6D5A] whitespace-nowrap">{orden.fecha}</td>
+                      <td className="px-5 py-3">
+                        <div className="flex items-center gap-1">
+                          <button className="rounded-md p-1.5 text-[#7A6D5A] hover:bg-[#F0EDE8]" title="Ver detalle">
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button className="rounded-md p-1.5 text-[#7A6D5A] hover:bg-[#F0EDE8]" title="Descargar PDF">
+                            <FileText className="h-4 w-4" />
+                          </button>
+                          <button className="rounded-md p-1.5 text-[#7A6D5A] hover:bg-[#F0EDE8]" title="Más opciones">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>

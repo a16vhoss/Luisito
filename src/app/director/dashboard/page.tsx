@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -16,107 +17,356 @@ import {
   ArrowUpRight,
   Package,
   DollarSign,
+  Loader2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
-// ── Datos ──
-const asistencia = {
-  presentes: 44,
-  total: 52,
-  porcentaje: 84.6,
-  desglose: [
-    { lugar: "Planta", cantidad: 10, icon: Factory },
-    { lugar: "En Ruta", cantidad: 6, icon: Truck },
-    { lugar: "Obra", cantidad: 8, icon: Building2 },
-  ],
+// ── Types ──
+interface AsistenciaData {
+  presentes: number
+  total: number
+  porcentaje: number
+  desglose: { lugar: string; cantidad: number; icon: typeof Factory }[]
 }
 
-const kpis = [
-  { label: "Obras Activas", value: "12", icon: HardHat, color: "text-[#D4A843]" },
-  { label: "Choferes en Ruta", value: "06", icon: Truck, color: "text-blue-500" },
-  { label: "Remisiones Hoy", value: "28", icon: FileText, color: "text-emerald-500" },
-  { label: "Alertas", value: "03", icon: AlertTriangle, color: "text-[#EF4444]" },
-]
-
-const obrasSemaforo = [
-  {
-    nombre: "Residencia \"Las Nubes\"",
-    descripcion: "Instalación pisos mármol Carrara - Cocina y baños",
-    piezas: { actual: 42, total: 45 },
-    progreso: 93,
-    status: "A Tiempo",
-    color: "#22C55E",
-  },
-  {
-    nombre: "Hotel Regency Lobby",
-    descripcion: "Revestimiento lobby principal - Mármol Emperador",
-    piezas: { actual: 78, total: 120 },
-    progreso: 65,
-    status: "En Riesgo",
-    color: "#F59E0B",
-  },
-  {
-    nombre: "Torre Corporate VII",
-    descripcion: "Fachada ventilada - Granito Negro Absoluto",
-    piezas: { actual: 35, total: 90 },
-    progreso: 39,
-    status: "Crítico En Retraso",
-    color: "#EF4444",
-  },
-  {
-    nombre: "Plaza Kukulcán",
-    descripcion: "Pisos exteriores travertino - Área comercial",
-    piezas: { actual: 156, total: 180 },
-    progreso: 87,
-    status: "A Tiempo",
-    color: "#22C55E",
-  },
-  {
-    nombre: "Residencia Montejo 480",
-    descripcion: "Escaleras y barandales - Mármol Crema Maya",
-    piezas: { actual: 22, total: 30 },
-    progreso: 73,
-    status: "En Riesgo",
-    color: "#F59E0B",
-  },
-]
-
-const stockCritico = [
-  { material: "Carrara White", stock: "20 m²", minimo: "50 m²", urgencia: "critico" },
-  { material: "Ocean Blue Quartz", stock: "12 m²", minimo: "30 m²", urgencia: "critico" },
-  { material: "Emperador Dark", stock: "35 m²", minimo: "40 m²", urgencia: "bajo" },
-  { material: "Negro Absoluto", stock: "8 m²", minimo: "25 m²", urgencia: "critico" },
-  { material: "Crema Maya", stock: "45 m²", minimo: "60 m²", urgencia: "bajo" },
-]
-
-const resumenFinanciero = {
-  totalUSD: "$2.8M",
-  items: [
-    { label: "Total Presupuesto", monto: "$2,800,000", progreso: 100, color: "#1E1A14" },
-    { label: "Facturado", monto: "$1,960,000", progreso: 70, color: "#D4A843" },
-    { label: "Por Cobrar", monto: "$840,000", progreso: 30, color: "#7A6D5A" },
-  ],
+interface KpiData {
+  label: string
+  value: string
+  icon: typeof HardHat
+  color: string
 }
 
-const m2Semanal = {
-  total: "1,420",
-  unidad: "m²",
-  cambio: "+15%",
-  positivo: true,
-  dias: [
-    { dia: "Lun", valor: 180 },
-    { dia: "Mar", valor: 220 },
-    { dia: "Mié", valor: 195 },
-    { dia: "Jue", valor: 260 },
-    { dia: "Vie", valor: 310 },
-    { dia: "Sáb", valor: 255 },
-  ],
+interface ObraSemaforo {
+  nombre: string
+  descripcion: string
+  piezas: { actual: number; total: number }
+  progreso: number
+  status: string
+  color: string
+}
+
+interface StockCriticoItem {
+  material: string
+  stock: string
+  minimo: string
+  urgencia: string
+}
+
+interface ResumenFinanciero {
+  totalUSD: string
+  items: { label: string; monto: string; progreso: number; color: string }[]
+}
+
+interface M2Semanal {
+  total: string
+  unidad: string
+  cambio: string
+  positivo: boolean
+  dias: { dia: string; valor: number }[]
+}
+
+// ── Helper: format currency ──
+function formatCurrency(value: number): string {
+  if (value >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(1)}M`
+  }
+  if (value >= 1_000) {
+    return `$${value.toLocaleString("en-US")}`
+  }
+  return `$${value}`
 }
 
 // ── Componente ──
 export default function DashboardPage() {
   const { toast } = useToast()
-  const maxBar = Math.max(...m2Semanal.dias.map((d) => d.valor))
+
+  const [loading, setLoading] = useState(true)
+  const [asistencia, setAsistencia] = useState<AsistenciaData>({
+    presentes: 0,
+    total: 0,
+    porcentaje: 0,
+    desglose: [
+      { lugar: "Planta", cantidad: 0, icon: Factory },
+      { lugar: "En Ruta", cantidad: 0, icon: Truck },
+      { lugar: "Obra", cantidad: 0, icon: Building2 },
+    ],
+  })
+  const [kpis, setKpis] = useState<KpiData[]>([
+    { label: "Obras Activas", value: "0", icon: HardHat, color: "text-[#D4A843]" },
+    { label: "Choferes en Ruta", value: "0", icon: Truck, color: "text-blue-500" },
+    { label: "Remisiones Hoy", value: "0", icon: FileText, color: "text-emerald-500" },
+    { label: "Alertas", value: "0", icon: AlertTriangle, color: "text-[#EF4444]" },
+  ])
+  const [obrasSemaforo, setObrasSemaforo] = useState<ObraSemaforo[]>([])
+  const [stockCritico, setStockCritico] = useState<StockCriticoItem[]>([])
+  const [resumenFinanciero, setResumenFinanciero] = useState<ResumenFinanciero>({
+    totalUSD: "$0",
+    items: [
+      { label: "Total Presupuesto", monto: "$0", progreso: 100, color: "#1E1A14" },
+      { label: "Facturado", monto: "$0", progreso: 0, color: "#D4A843" },
+      { label: "Por Cobrar", monto: "$0", progreso: 0, color: "#7A6D5A" },
+    ],
+  })
+  const [m2Semanal, setM2Semanal] = useState<M2Semanal>({
+    total: "0",
+    unidad: "m²",
+    cambio: "—",
+    positivo: true,
+    dias: [
+      { dia: "Lun", valor: 0 },
+      { dia: "Mar", valor: 0 },
+      { dia: "Mié", valor: 0 },
+      { dia: "Jue", valor: 0 },
+      { dia: "Vie", valor: 0 },
+      { dia: "Sáb", valor: 0 },
+    ],
+  })
+
+  useEffect(() => {
+    async function fetchDashboard() {
+      const supabase = createClient()
+      const today = new Date().toISOString().split("T")[0]
+
+      // Calculate start of current week (Monday)
+      const now = new Date()
+      const dayOfWeek = now.getDay()
+      const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+      const monday = new Date(now)
+      monday.setDate(now.getDate() + mondayOffset)
+      const weekStart = monday.toISOString().split("T")[0]
+
+      const [obrasRes, asistenciaRes, remisionesRes, materialesRes, finanzasRes, conceptosRes] =
+        await Promise.all([
+          supabase.from("obras").select("*").eq("estatus", "activa"),
+          supabase
+            .from("asistencia")
+            .select("*, usuario:users!usuario_id(role)")
+            .eq("fecha", today),
+          supabase.from("remisiones").select("id").gte("created_at", today + "T00:00:00"),
+          supabase.from("materiales").select("*").eq("activo", true),
+          supabase.from("finanzas_obra").select("*"),
+          supabase
+            .from("conceptos_obra")
+            .select("*, obra:obras!obra_id(nombre, estatus)"),
+        ])
+
+      // ── Asistencia ──
+      const asistRows = asistenciaRes.data ?? []
+      const presentes = asistRows.filter(
+        (r: any) => r.tipo === "normal" || r.tipo === "retardo"
+      ).length
+      const totalAsist = asistRows.length || 1
+      const porcentaje = totalAsist > 0 ? Math.round((presentes / totalAsist) * 1000) / 10 : 0
+
+      const enPlanta = asistRows.filter((r: any) => r.registrado_en === "planta").length
+      const enObra = asistRows.filter((r: any) => r.registrado_en === "obra").length
+      const choferes = asistRows.filter(
+        (r: any) => r.usuario?.role === "chofer" && (r.tipo === "normal" || r.tipo === "retardo")
+      ).length
+
+      setAsistencia({
+        presentes,
+        total: totalAsist,
+        porcentaje,
+        desglose: [
+          { lugar: "Planta", cantidad: enPlanta, icon: Factory },
+          { lugar: "En Ruta", cantidad: choferes, icon: Truck },
+          { lugar: "Obra", cantidad: enObra, icon: Building2 },
+        ],
+      })
+
+      // ── KPIs ──
+      const obrasActivas = obrasRes.data?.length ?? 0
+      const choferesEnRuta = choferes
+      const remisionesHoy = remisionesRes.data?.length ?? 0
+      const materialesData = materialesRes.data ?? []
+      const alertas = materialesData.filter(
+        (m: any) => m.stock_actual != null && m.stock_minimo != null && m.stock_actual < m.stock_minimo
+      ).length
+
+      setKpis([
+        {
+          label: "Obras Activas",
+          value: String(obrasActivas).padStart(2, "0"),
+          icon: HardHat,
+          color: "text-[#D4A843]",
+        },
+        {
+          label: "Choferes en Ruta",
+          value: String(choferesEnRuta).padStart(2, "0"),
+          icon: Truck,
+          color: "text-blue-500",
+        },
+        {
+          label: "Remisiones Hoy",
+          value: String(remisionesHoy).padStart(2, "0"),
+          icon: FileText,
+          color: "text-emerald-500",
+        },
+        {
+          label: "Alertas",
+          value: String(alertas).padStart(2, "0"),
+          icon: AlertTriangle,
+          color: "text-[#EF4444]",
+        },
+      ])
+
+      // ── Obras Semáforo ──
+      const conceptos = conceptosRes.data ?? []
+      const obras = obrasRes.data ?? []
+
+      // Group conceptos by obra_id
+      const conceptosPorObra: Record<string, any[]> = {}
+      for (const c of conceptos) {
+        if (!conceptosPorObra[c.obra_id]) conceptosPorObra[c.obra_id] = []
+        conceptosPorObra[c.obra_id].push(c)
+      }
+
+      const semaforo: ObraSemaforo[] = obras.map((obra: any) => {
+        const cs = conceptosPorObra[obra.id] ?? []
+        const totalVendida = cs.reduce(
+          (sum: number, c: any) => sum + (Number(c.cantidad_vendida) || 0),
+          0
+        )
+        const totalVerificada = cs.reduce(
+          (sum: number, c: any) => sum + (Number(c.cantidad_verificada) || 0),
+          0
+        )
+        const progreso = totalVendida > 0 ? Math.round((totalVerificada / totalVendida) * 100) : 0
+
+        let status: string
+        let color: string
+        if (progreso >= 80) {
+          status = "A Tiempo"
+          color = "#22C55E"
+        } else if (progreso >= 50) {
+          status = "En Riesgo"
+          color = "#F59E0B"
+        } else {
+          status = "Crítico"
+          color = "#EF4444"
+        }
+
+        return {
+          nombre: obra.nombre ?? "Sin nombre",
+          descripcion: obra.descripcion ?? "",
+          piezas: { actual: totalVerificada, total: totalVendida },
+          progreso,
+          status,
+          color,
+        }
+      })
+
+      setObrasSemaforo(semaforo)
+
+      // ── Stock Crítico ──
+      const criticos: StockCriticoItem[] = materialesData
+        .filter(
+          (m: any) =>
+            m.stock_actual != null &&
+            m.stock_minimo != null &&
+            m.stock_actual < m.stock_minimo
+        )
+        .map((m: any) => {
+          const ratio = m.stock_minimo > 0 ? m.stock_actual / m.stock_minimo : 0
+          return {
+            material: m.nombre ?? "—",
+            stock: `${m.stock_actual} ${m.unidad ?? "m²"}`,
+            minimo: `${m.stock_minimo} ${m.unidad ?? "m²"}`,
+            urgencia: ratio < 0.5 ? "critico" : "bajo",
+          }
+        })
+
+      setStockCritico(criticos)
+
+      // ── Resumen Financiero ──
+      const finanzas = finanzasRes.data ?? []
+      const totalPresupuesto = finanzas.reduce(
+        (sum: number, f: any) => sum + (Number(f.contrato_total) || 0),
+        0
+      )
+      const facturado = finanzas.reduce(
+        (sum: number, f: any) => sum + (Number(f.estimado_acumulado) || 0),
+        0
+      )
+      const porCobrar = finanzas.reduce(
+        (sum: number, f: any) =>
+          sum + ((Number(f.estimado_acumulado) || 0) - (Number(f.cobrado_acumulado) || 0)),
+        0
+      )
+
+      const facturadoPct = totalPresupuesto > 0 ? Math.round((facturado / totalPresupuesto) * 100) : 0
+      const porCobrarPct = totalPresupuesto > 0 ? Math.round((porCobrar / totalPresupuesto) * 100) : 0
+
+      setResumenFinanciero({
+        totalUSD: formatCurrency(totalPresupuesto),
+        items: [
+          {
+            label: "Total Presupuesto",
+            monto: formatCurrency(totalPresupuesto),
+            progreso: 100,
+            color: "#1E1A14",
+          },
+          {
+            label: "Facturado",
+            monto: formatCurrency(facturado),
+            progreso: facturadoPct,
+            color: "#D4A843",
+          },
+          {
+            label: "Por Cobrar",
+            monto: formatCurrency(porCobrar),
+            progreso: porCobrarPct,
+            color: "#7A6D5A",
+          },
+        ],
+      })
+
+      // ── M² Semanal ──
+      // Attempt to fetch movimientos_almacen for the current week
+      const { data: movimientos } = await supabase
+        .from("movimientos_almacen")
+        .select("fecha, cantidad")
+        .gte("fecha", weekStart)
+        .lte("fecha", today)
+
+      const diasSemana = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+      const diasData: { dia: string; valor: number }[] = diasSemana.map((dia, idx) => {
+        const targetDate = new Date(monday)
+        targetDate.setDate(monday.getDate() + idx)
+        const dateStr = targetDate.toISOString().split("T")[0]
+        const dayTotal = (movimientos ?? [])
+          .filter((m: any) => m.fecha === dateStr)
+          .reduce((sum: number, m: any) => sum + (Number(m.cantidad) || 0), 0)
+        return { dia, valor: dayTotal }
+      })
+
+      const totalM2 = diasData.reduce((sum, d) => sum + d.valor, 0)
+
+      setM2Semanal({
+        total: totalM2.toLocaleString("en-US"),
+        unidad: "m²",
+        cambio: totalM2 > 0 ? "—" : "—",
+        positivo: true,
+        dias: diasData,
+      })
+
+      setLoading(false)
+    }
+
+    fetchDashboard()
+  }, [])
+
+  const maxBar = Math.max(...m2Semanal.dias.map((d) => d.valor), 1)
+
+  if (loading) {
+    return (
+      <div className="flex h-[60vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -219,58 +469,62 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {obrasSemaforo.map((obra) => (
-                  <div
-                    key={obra.nombre}
-                    className="flex items-center gap-4 rounded-lg border border-[#E0DBD1] p-4"
-                    style={{ borderLeftWidth: 4, borderLeftColor: obra.color }}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-semibold text-[#1E1A14] truncate">
-                          {obra.nombre}
-                        </h3>
-                        <Badge
-                          className="shrink-0 text-[10px]"
-                          style={{
-                            backgroundColor: `${obra.color}20`,
-                            color: obra.color,
-                            borderColor: obra.color,
-                          }}
-                        >
-                          {obra.status}
-                        </Badge>
-                      </div>
-                      <p className="mt-0.5 text-xs text-[#7A6D5A] truncate">
-                        {obra.descripcion}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-4 shrink-0">
-                      <div className="text-right">
-                        <p className="text-sm font-bold text-[#1E1A14]">
-                          {obra.piezas.actual}/{obra.piezas.total}
-                        </p>
-                        <p className="text-[10px] text-[#7A6D5A]">piezas</p>
-                      </div>
-                      <div className="w-24">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-medium" style={{ color: obra.color }}>
-                            {obra.progreso}%
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full bg-[#F0EDE8]">
-                          <div
-                            className="h-1.5 rounded-full transition-all"
+                {obrasSemaforo.length === 0 ? (
+                  <p className="text-sm text-[#7A6D5A] text-center py-4">No hay obras activas</p>
+                ) : (
+                  obrasSemaforo.map((obra) => (
+                    <div
+                      key={obra.nombre}
+                      className="flex items-center gap-4 rounded-lg border border-[#E0DBD1] p-4"
+                      style={{ borderLeftWidth: 4, borderLeftColor: obra.color }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-semibold text-[#1E1A14] truncate">
+                            {obra.nombre}
+                          </h3>
+                          <Badge
+                            className="shrink-0 text-[10px]"
                             style={{
-                              width: `${obra.progreso}%`,
-                              backgroundColor: obra.color,
+                              backgroundColor: `${obra.color}20`,
+                              color: obra.color,
+                              borderColor: obra.color,
                             }}
-                          />
+                          >
+                            {obra.status}
+                          </Badge>
+                        </div>
+                        <p className="mt-0.5 text-xs text-[#7A6D5A] truncate">
+                          {obra.descripcion}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-4 shrink-0">
+                        <div className="text-right">
+                          <p className="text-sm font-bold text-[#1E1A14]">
+                            {obra.piezas.actual}/{obra.piezas.total}
+                          </p>
+                          <p className="text-[10px] text-[#7A6D5A]">piezas</p>
+                        </div>
+                        <div className="w-24">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-medium" style={{ color: obra.color }}>
+                              {obra.progreso}%
+                            </span>
+                          </div>
+                          <div className="h-1.5 w-full rounded-full bg-[#F0EDE8]">
+                            <div
+                              className="h-1.5 rounded-full transition-all"
+                              style={{
+                                width: `${obra.progreso}%`,
+                                backgroundColor: obra.color,
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -300,7 +554,7 @@ export default function DashboardPage() {
                   <div key={dia.dia} className="flex flex-1 flex-col items-center gap-1">
                     <div
                       className="w-full rounded-t bg-[#D4A843]/80 hover:bg-[#D4A843] transition-colors"
-                      style={{ height: `${(dia.valor / maxBar) * 100}%` }}
+                      style={{ height: `${(dia.valor / maxBar) * 100}%`, minHeight: dia.valor > 0 ? "4px" : "0px" }}
                     />
                     <span className="text-[10px] text-[#7A6D5A]">{dia.dia}</span>
                   </div>
@@ -319,26 +573,30 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {stockCritico.map((item) => (
-                  <div key={item.material} className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`h-2 w-2 rounded-full ${
-                          item.urgencia === "critico" ? "bg-[#EF4444]" : "bg-[#F59E0B]"
-                        }`}
-                      />
-                      <span className="text-sm text-[#1E1A14]">{item.material}</span>
+                {stockCritico.length === 0 ? (
+                  <p className="text-sm text-[#7A6D5A] text-center py-2">Sin alertas de stock</p>
+                ) : (
+                  stockCritico.map((item) => (
+                    <div key={item.material} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`h-2 w-2 rounded-full ${
+                            item.urgencia === "critico" ? "bg-[#EF4444]" : "bg-[#F59E0B]"
+                          }`}
+                        />
+                        <span className="text-sm text-[#1E1A14]">{item.material}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-semibold text-[#1E1A14]">
+                          {item.stock}
+                        </span>
+                        <span className="ml-1 text-[10px] text-[#7A6D5A]">
+                          / mín {item.minimo}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm font-semibold text-[#1E1A14]">
-                        {item.stock}
-                      </span>
-                      <span className="ml-1 text-[10px] text-[#7A6D5A]">
-                        / mín {item.minimo}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

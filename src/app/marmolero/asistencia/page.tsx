@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import {
   Bell,
   Hand,
@@ -11,49 +11,14 @@ import {
   MapPin,
   ChevronRight,
   Hammer,
+  Loader2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 type RegistroEstado = "sin_registrar" | "entrada" | "salida"
 
-const mockHistorial = [
-  { fecha: "18 Mar 2026", entrada: "07:02", salida: "16:05", horas: "9h 03m", tipo: "normal" as const },
-  { fecha: "17 Mar 2026", entrada: "07:00", salida: "16:00", horas: "9h 00m", tipo: "normal" as const },
-  { fecha: "16 Mar 2026", entrada: "07:18", salida: "16:10", horas: "8h 52m", tipo: "retardo" as const },
-  { fecha: "15 Mar 2026", entrada: "06:58", salida: "16:02", horas: "9h 04m", tipo: "normal" as const },
-]
-
 type PiezaEstatus = "por_iniciar" | "pendiente_liberacion" | "en_espera_materiales" | "en_proceso"
-
-const initialPiezasHoy = [
-  {
-    id: "1",
-    tipo: "CORTE DIAMANTE",
-    numero: "#2849",
-    nombre: "Encimera Calacatta Gold",
-    medidas: "240 x 60 x 3 cm",
-    acabado: "Pulido Espejo",
-    estatus: "por_iniciar" as PiezaEstatus,
-  },
-  {
-    id: "2",
-    tipo: "PULIDO",
-    numero: "#2847",
-    nombre: "Cubierta Nero Marquina",
-    medidas: "180 x 55 x 2 cm",
-    acabado: "Mate",
-    estatus: "pendiente_liberacion" as PiezaEstatus,
-  },
-  {
-    id: "3",
-    tipo: "ACABADO BORDES",
-    numero: "#2844",
-    nombre: "Muro Blanco Carrara",
-    medidas: "240 x 120 x 2 cm",
-    acabado: "Biselado",
-    estatus: "en_espera_materiales" as PiezaEstatus,
-  },
-]
 
 const piezaStatusConfig: Record<PiezaEstatus, { label: string; color: string; actionable: boolean }> = {
   por_iniciar: { label: "INICIAR TRABAJO", color: "bg-golden text-marble-950", actionable: true },
@@ -62,41 +27,116 @@ const piezaStatusConfig: Record<PiezaEstatus, { label: string; color: string; ac
   en_espera_materiales: { label: "EN ESPERA DE MATERIALES", color: "bg-marble-700 text-marble-400", actionable: false },
 }
 
+interface AsistenciaRecord {
+  id: string
+  usuario_id: string
+  fecha: string
+  hora_entrada: string | null
+  hora_salida: string | null
+  tipo: string
+  registrado_en: string
+}
+
 export default function AsistenciaPage() {
   const { toast } = useToast()
   const [estado, setEstado] = useState<RegistroEstado>("sin_registrar")
   const [horaEntrada, setHoraEntrada] = useState<string | null>(null)
-  const [piezasHoy, setPiezasHoy] = useState(initialPiezasHoy)
+  const [historial, setHistorial] = useState<AsistenciaRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
 
-  const handleRegistro = () => {
-    if (estado === "sin_registrar") {
-      const now = new Date()
-      const hora = now.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })
-      setHoraEntrada(hora)
-      setEstado("entrada")
-      toast({
-        title: "Entrada registrada",
-        description: `Hora de entrada: ${hora}`,
-      })
-    } else if (estado === "entrada") {
-      setEstado("salida")
-      toast({
-        title: "Salida registrada",
-        description: "Jornada completada exitosamente",
-      })
+  const supabase = createClient()
+
+  const today = new Date().toISOString().split("T")[0]
+
+  const fetchData = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+    setUserId(user.id)
+
+    // Fetch attendance history
+    const { data: historialData } = await supabase
+      .from("asistencia")
+      .select("*")
+      .eq("usuario_id", user.id)
+      .order("fecha", { ascending: false })
+      .limit(30)
+
+    if (historialData) {
+      setHistorial(historialData)
+
+      // Check today's status
+      const todayRecord = historialData.find((r: AsistenciaRecord) => r.fecha === today)
+      if (todayRecord) {
+        if (todayRecord.hora_salida) {
+          setEstado("salida")
+          setHoraEntrada(todayRecord.hora_entrada)
+        } else if (todayRecord.hora_entrada) {
+          setEstado("entrada")
+          setHoraEntrada(todayRecord.hora_entrada)
+        }
+      }
     }
-  }
 
-  const handleIniciarTrabajo = (id: string) => {
-    const pieza = piezasHoy.find((p) => p.id === id)
-    if (!pieza) return
-    setPiezasHoy((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, estatus: "en_proceso" as PiezaEstatus } : p))
-    )
-    toast({
-      title: "Trabajo iniciado",
-      description: `Pieza ${pieza.numero} en proceso`,
-    })
+    setLoading(false)
+  }, [today])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  const handleRegistro = async () => {
+    if (!userId || actionLoading) return
+    setActionLoading(true)
+
+    const now = new Date().toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", hour12: false })
+
+    try {
+      if (estado === "sin_registrar") {
+        const { error } = await supabase.from("asistencia").insert({
+          usuario_id: userId,
+          fecha: today,
+          hora_entrada: now,
+          tipo: "normal",
+          registrado_en: "planta",
+        })
+
+        if (error) throw error
+
+        setHoraEntrada(now)
+        setEstado("entrada")
+        toast({
+          title: "Entrada registrada",
+          description: `Hora de entrada: ${now}`,
+        })
+      } else if (estado === "entrada") {
+        const { error } = await supabase
+          .from("asistencia")
+          .update({ hora_salida: now })
+          .eq("usuario_id", userId)
+          .eq("fecha", today)
+
+        if (error) throw error
+
+        setEstado("salida")
+        toast({
+          title: "Salida registrada",
+          description: "Jornada completada exitosamente",
+        })
+      }
+
+      // Refresh history
+      fetchData()
+    } catch (err: any) {
+      toast({
+        title: "Error",
+        description: err.message || "No se pudo registrar",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   const estadoConfig = {
@@ -125,6 +165,30 @@ export default function AsistenciaPage() {
 
   const config = estadoConfig[estado]
 
+  const formatFecha = (fecha: string) => {
+    const d = new Date(fecha + "T12:00:00")
+    return d.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
+  }
+
+  const calcularHoras = (entrada: string | null, salida: string | null) => {
+    if (!entrada || !salida) return "--"
+    const [eh, em] = entrada.split(":").map(Number)
+    const [sh, sm] = salida.split(":").map(Number)
+    const totalMin = (sh * 60 + sm) - (eh * 60 + em)
+    if (totalMin <= 0) return "--"
+    const h = Math.floor(totalMin / 60)
+    const m = totalMin % 60
+    return `${h}h ${m.toString().padStart(2, "0")}m`
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-marble-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-golden" />
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-marble-950">
       {/* Header */}
@@ -146,32 +210,32 @@ export default function AsistenciaPage() {
 
       <div className="px-5 pb-6">
         {/* Greeting */}
-        <h1 className="text-2xl font-bold text-white">Buenos dias, Roberto</h1>
+        <h1 className="text-2xl font-bold text-white">Mi Asistencia</h1>
         <p className="mt-1 flex items-center gap-1.5 text-xs tracking-wide text-marble-400">
           <MapPin className="h-3.5 w-3.5" />
-          PLANTA DE FABRICACION &bull; SECTOR A
+          PLANTA DE FABRICACION
         </p>
 
         {/* Big Attendance Button */}
         <div className="mt-8 flex flex-col items-center">
           <button
             onClick={handleRegistro}
-            disabled={estado === "salida"}
+            disabled={estado === "salida" || actionLoading}
             className={`flex h-40 w-40 flex-col items-center justify-center rounded-full border-2 transition-all active:scale-95 ${config.buttonColor} ${
               estado === "salida" ? "opacity-60 cursor-not-allowed" : ""
             }`}
           >
-            {estado === "sin_registrar" && (
+            {actionLoading ? (
+              <Loader2 className={`h-12 w-12 animate-spin ${config.iconColor}`} />
+            ) : estado === "sin_registrar" ? (
               <Hand className={`h-12 w-12 ${config.iconColor}`} />
-            )}
-            {estado === "entrada" && (
+            ) : estado === "entrada" ? (
               <Clock className={`h-12 w-12 ${config.iconColor}`} />
-            )}
-            {estado === "salida" && (
+            ) : (
               <CheckCircle2 className={`h-12 w-12 ${config.iconColor}`} />
             )}
             <span className="mt-2 text-xs font-semibold">
-              {estado === "sin_registrar" ? "REGISTRAR ENTRADA" : estado === "entrada" ? "REGISTRAR SALIDA" : "COMPLETADO"}
+              {actionLoading ? "REGISTRANDO..." : estado === "sin_registrar" ? "REGISTRAR ENTRADA" : estado === "entrada" ? "REGISTRAR SALIDA" : "COMPLETADO"}
             </span>
           </button>
 
@@ -181,104 +245,54 @@ export default function AsistenciaPage() {
           </span>
         </div>
 
-        {/* Piezas Asignadas */}
-        <div className="mt-10">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-semibold tracking-widest text-marble-500 uppercase">
-              Piezas Asignadas
-            </h2>
-            <span className="rounded-full bg-golden/15 px-2.5 py-0.5 text-[10px] font-bold text-golden">
-              {piezasHoy.length} HOY
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {piezasHoy.map((pieza) => {
-              const pStatus = piezaStatusConfig[pieza.estatus]
-              return (
-                <div
-                  key={pieza.id}
-                  className="rounded-2xl border border-marble-800 bg-marble-900 p-4"
-                >
-                  {/* Type badge */}
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="rounded-full bg-golden/15 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-golden">
-                      {pieza.tipo}
-                    </span>
-                    <span className="text-xs font-semibold text-marble-400">{pieza.numero}</span>
-                  </div>
-
-                  <p className="text-sm font-bold text-white">{pieza.nombre}</p>
-
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <div>
-                      <p className="text-[10px] font-medium tracking-wider text-marble-500">MEDIDAS</p>
-                      <p className="text-xs font-semibold text-marble-200">{pieza.medidas}</p>
-                    </div>
-                    <div>
-                      <p className="text-[10px] font-medium tracking-wider text-marble-500">ACABADO</p>
-                      <p className="text-xs font-semibold text-marble-200">{pieza.acabado}</p>
-                    </div>
-                  </div>
-
-                  {/* Action */}
-                  <div className="mt-4">
-                    {pStatus.actionable ? (
-                      <button
-                        onClick={() => handleIniciarTrabajo(pieza.id)}
-                        className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-xs font-bold tracking-wide ${pStatus.color} active:opacity-80 transition-opacity`}
-                      >
-                        <Hammer className="h-4 w-4" />
-                        {pStatus.label}
-                      </button>
-                    ) : (
-                      <div className={`flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[11px] font-semibold ${pStatus.color}`}>
-                        <AlertCircle className="h-3.5 w-3.5" />
-                        {pStatus.label}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
         {/* History */}
         <div className="mt-8">
           <h2 className="mb-3 text-xs font-semibold tracking-widest text-marble-500 uppercase">
             Historial de Asistencia
           </h2>
-          <div className="space-y-2">
-            {mockHistorial.map((dia, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between rounded-xl border border-marble-800 bg-marble-900 px-4 py-3"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                    dia.tipo === "retardo" ? "bg-semaforo-amarillo/10" : "bg-semaforo-verde/10"
-                  }`}>
-                    <Clock className={`h-4 w-4 ${
-                      dia.tipo === "retardo" ? "text-semaforo-amarillo" : "text-semaforo-verde"
-                    }`} />
+
+          {historial.length === 0 ? (
+            <div className="mt-8 text-center">
+              <Calendar className="mx-auto h-10 w-10 text-marble-700" />
+              <p className="mt-2 text-sm text-marble-500">No hay registros de asistencia</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {historial.map((dia) => {
+                const isRetardo = dia.tipo === "retardo"
+                return (
+                  <div
+                    key={dia.id}
+                    className="flex items-center justify-between rounded-xl border border-marble-800 bg-marble-900 px-4 py-3"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
+                        isRetardo ? "bg-semaforo-amarillo/10" : "bg-semaforo-verde/10"
+                      }`}>
+                        <Clock className={`h-4 w-4 ${
+                          isRetardo ? "text-semaforo-amarillo" : "text-semaforo-verde"
+                        }`} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-white">{formatFecha(dia.fecha)}</p>
+                        <p className="text-[11px] text-marble-500">
+                          {dia.hora_entrada || "--"} - {dia.hora_salida || "--"}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-semibold text-marble-300">
+                        {calcularHoras(dia.hora_entrada, dia.hora_salida)}
+                      </p>
+                      {isRetardo && (
+                        <span className="text-[10px] font-medium text-semaforo-amarillo">Retardo</span>
+                      )}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-medium text-white">{dia.fecha}</p>
-                    <p className="text-[11px] text-marble-500">
-                      {dia.entrada} - {dia.salida}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs font-semibold text-marble-300">{dia.horas}</p>
-                  {dia.tipo === "retardo" && (
-                    <span className="text-[10px] font-medium text-semaforo-amarillo">Retardo</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

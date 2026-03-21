@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,24 +14,53 @@ import {
   CreditCard,
   CheckCircle2,
   Clock,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-
-const initialHistorial = [
-  { id: "1", fecha: "18 Mar 2026", monto: 1850.0, litros: 78.5, estacion: "Pemex Av. Tulum" },
-  { id: "2", fecha: "15 Mar 2026", monto: 2100.0, litros: 89.2, estacion: "BP Bonampak" },
-  { id: "3", fecha: "12 Mar 2026", monto: 1650.0, litros: 70.1, estacion: "Pemex Puerto Juarez" },
-]
+import { createClient } from "@/lib/supabase/client"
 
 export default function GasolinaPage() {
   const { toast } = useToast()
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const [monto, setMonto] = useState("")
   const [litros, setLitros] = useState("")
   const [fotoPreview, setFotoPreview] = useState<string | null>(null)
-  const [historial, setHistorial] = useState(initialHistorial)
+  const [historial, setHistorial] = useState<any[]>([])
+  const [vehiculo, setVehiculo] = useState<any>(null)
+  const [userId, setUserId] = useState<string | null>(null)
 
-  const handleRegistrarCarga = () => {
+  useEffect(() => {
+    async function fetchData() {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      setUserId(user.id)
+
+      // Fetch assigned vehicle
+      const { data: vehiculoData } = await supabase
+        .from("vehiculos")
+        .select("*")
+        .eq("chofer_asignado_id", user.id)
+        .single()
+
+      if (vehiculoData) setVehiculo(vehiculoData)
+
+      // Fetch fuel history
+      const { data: gastos } = await supabase
+        .from("gastos_gasolina")
+        .select("*, vehiculo:vehiculos(placas, marca)")
+        .eq("chofer_id", user.id)
+        .order("created_at", { ascending: false })
+
+      setHistorial(gastos || [])
+      setLoading(false)
+    }
+    fetchData()
+  }, [])
+
+  const handleRegistrarCarga = async () => {
     if (!monto || !litros) {
       toast({
         title: "Campos requeridos",
@@ -51,17 +80,36 @@ export default function GasolinaPage() {
       return
     }
 
-    const now = new Date()
-    const fecha = now.toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
-    const newEntry = {
-      id: String(Date.now()),
-      fecha,
-      monto: montoNum,
-      litros: litrosNum,
-      estacion: "Estacion registrada",
+    if (!userId) return
+
+    setSubmitting(true)
+    const supabase = createClient()
+
+    const { data, error } = await supabase
+      .from("gastos_gasolina")
+      .insert({
+        chofer_id: userId,
+        monto: montoNum,
+        litros: litrosNum,
+        vehiculo_id: vehiculo?.id || null,
+      })
+      .select("*, vehiculo:vehiculos(placas, marca)")
+      .single()
+
+    setSubmitting(false)
+
+    if (error) {
+      toast({
+        title: "Error al registrar",
+        description: error.message,
+      })
+      return
     }
 
-    setHistorial((prev) => [newEntry, ...prev])
+    if (data) {
+      setHistorial((prev) => [data, ...prev])
+    }
+
     setMonto("")
     setLitros("")
     setFotoPreview(null)
@@ -70,6 +118,14 @@ export default function GasolinaPage() {
       title: "Carga registrada exitosamente",
       description: `$${montoNum.toFixed(2)} - ${litrosNum.toFixed(1)} litros`,
     })
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-marble-950 flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-golden" />
+      </div>
+    )
   }
 
   return (
@@ -82,7 +138,9 @@ export default function GasolinaPage() {
           </Link>
           <div>
             <h1 className="text-lg font-bold text-white">Registro de Gasolina</h1>
-            <p className="text-xs text-marble-500">KENWORTH T680 [M-452]</p>
+            {vehiculo && (
+              <p className="text-xs text-marble-500">{vehiculo.marca} {vehiculo.modelo || ""} [{vehiculo.placas}]</p>
+            )}
           </div>
         </div>
       </header>
@@ -187,10 +245,15 @@ export default function GasolinaPage() {
           {/* Submit */}
           <Button
             onClick={handleRegistrarCarga}
+            disabled={submitting}
             className="h-12 w-full rounded-xl bg-golden text-sm font-bold tracking-wide text-marble-950 hover:bg-golden-light active:bg-golden-dark"
           >
-            <Upload className="mr-2 h-4 w-4" />
-            REGISTRAR CARGA
+            {submitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="mr-2 h-4 w-4" />
+            )}
+            {submitting ? "REGISTRANDO..." : "REGISTRAR CARGA"}
           </Button>
         </div>
 
@@ -199,25 +262,36 @@ export default function GasolinaPage() {
           <h2 className="mb-3 text-xs font-semibold tracking-widest text-marble-500 uppercase">
             Historial Reciente
           </h2>
-          <div className="space-y-2">
-            {historial.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between rounded-xl border border-marble-800 bg-marble-900 px-4 py-3"
-              >
-                <div>
-                  <p className="text-sm font-medium text-white">
-                    ${item.monto.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                  </p>
-                  <p className="text-[11px] text-marble-500 flex items-center gap-1">
-                    <Clock className="h-3 w-3" />
-                    {item.fecha} &middot; {item.litros}L &middot; {item.estacion}
-                  </p>
+          {historial.length === 0 ? (
+            <div className="rounded-xl border border-marble-800 bg-marble-900 p-8 text-center">
+              <Fuel className="mx-auto h-8 w-8 text-marble-700" />
+              <p className="mt-3 text-sm font-medium text-marble-400">Sin registros</p>
+              <p className="mt-1 text-xs text-marble-600">Aún no has registrado gastos de gasolina</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {historial.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between rounded-xl border border-marble-800 bg-marble-900 px-4 py-3"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-white">
+                      ${Number(item.monto).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-[11px] text-marble-500 flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {new Date(item.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                      {" · "}
+                      {Number(item.litros).toFixed(1)}L
+                      {item.vehiculo?.placas && ` · ${item.vehiculo.placas}`}
+                    </p>
+                  </div>
+                  <Fuel className="h-4 w-4 text-marble-600" />
                 </div>
-                <Fuel className="h-4 w-4 text-marble-600" />
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -24,140 +24,11 @@ import {
   Building2,
   Truck,
   Factory,
+  Loader2,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-
-const resumenAsistencia = {
-  total: 52,
-  presentes: 44,
-  ausentes: 5,
-  permisos: 3,
-  porcentaje: 84.6,
-}
-
-const empleados = [
-  {
-    id: "EMP-001",
-    nombre: "Miguel Ángel Tun Canul",
-    puesto: "Instalador Senior",
-    departamento: "Instalaciones",
-    ubicacion: "Residencia Las Nubes",
-    tipoUbicacion: "obra",
-    horaEntrada: "07:02",
-    horaSalida: null,
-    status: "Presente",
-    horasTrabajadas: "8h 15m",
-  },
-  {
-    id: "EMP-002",
-    nombre: "José Luis Chi Pech",
-    puesto: "Cortador CNC",
-    departamento: "Taller",
-    ubicacion: "Planta Principal",
-    tipoUbicacion: "planta",
-    horaEntrada: "06:58",
-    horaSalida: null,
-    status: "Presente",
-    horasTrabajadas: "8h 19m",
-  },
-  {
-    id: "EMP-003",
-    nombre: "Juan Carlos Canul May",
-    puesto: "Chofer",
-    departamento: "Logística",
-    ubicacion: "En ruta → Hotel Regency",
-    tipoUbicacion: "ruta",
-    horaEntrada: "06:45",
-    horaSalida: null,
-    status: "Presente",
-    horasTrabajadas: "8h 32m",
-  },
-  {
-    id: "EMP-004",
-    nombre: "Pedro Antonio Pech Dzul",
-    puesto: "Chofer",
-    departamento: "Logística",
-    ubicacion: "En ruta → Plaza Kukulcán",
-    tipoUbicacion: "ruta",
-    horaEntrada: "07:10",
-    horaSalida: null,
-    status: "Presente",
-    horasTrabajadas: "8h 07m",
-  },
-  {
-    id: "EMP-005",
-    nombre: "Ricardo Alejandro May Uc",
-    puesto: "Pulidor",
-    departamento: "Taller",
-    ubicacion: "Planta Principal",
-    tipoUbicacion: "planta",
-    horaEntrada: "07:00",
-    horaSalida: null,
-    status: "Presente",
-    horasTrabajadas: "8h 17m",
-  },
-  {
-    id: "EMP-006",
-    nombre: "Fernando Euán Couoh",
-    puesto: "Instalador",
-    departamento: "Instalaciones",
-    ubicacion: "Torre Corporate VII",
-    tipoUbicacion: "obra",
-    horaEntrada: null,
-    horaSalida: null,
-    status: "Ausente",
-    horasTrabajadas: "—",
-  },
-  {
-    id: "EMP-007",
-    nombre: "Carlos Alberto Pérez Novelo",
-    puesto: "Supervisor de Obra",
-    departamento: "Operaciones",
-    ubicacion: "Hotel Regency",
-    tipoUbicacion: "obra",
-    horaEntrada: "06:50",
-    horaSalida: null,
-    status: "Presente",
-    horasTrabajadas: "8h 27m",
-  },
-  {
-    id: "EMP-008",
-    nombre: "Armando Nah Dzib",
-    puesto: "Almacenista",
-    departamento: "Almacén",
-    ubicacion: "Planta Principal",
-    tipoUbicacion: "planta",
-    horaEntrada: null,
-    horaSalida: null,
-    status: "Permiso",
-    horasTrabajadas: "—",
-  },
-  {
-    id: "EMP-009",
-    nombre: "Luis Enrique Balam Pool",
-    puesto: "Cortador Manual",
-    departamento: "Taller",
-    ubicacion: "Planta Principal",
-    tipoUbicacion: "planta",
-    horaEntrada: "07:05",
-    horaSalida: null,
-    status: "Presente",
-    horasTrabajadas: "8h 12m",
-  },
-  {
-    id: "EMP-010",
-    nombre: "Jorge Iván Caamal Ku",
-    puesto: "Ayudante General",
-    departamento: "Instalaciones",
-    ubicacion: "Depto. Altabrisa",
-    tipoUbicacion: "obra",
-    horaEntrada: "07:15",
-    horaSalida: null,
-    status: "Presente",
-    horasTrabajadas: "8h 02m",
-  },
-]
+import { createClient } from "@/lib/supabase/client"
 
 const statusColors: Record<string, string> = {
   Presente: "bg-emerald-100 text-emerald-700",
@@ -171,9 +42,93 @@ const ubicacionIcons: Record<string, typeof Factory> = {
   ruta: Truck,
 }
 
+function getDepartamento(role: string): string {
+  const map: Record<string, string> = {
+    director: "Dirección",
+    admin: "Administración",
+    rrhh: "RRHH",
+    jefe_taller: "Taller",
+    residente: "Operaciones",
+    chofer: "Logística",
+    marmolero: "Taller",
+  }
+  return map[role] ?? role
+}
+
+function calcHoras(entrada: string): string {
+  const [h, m] = entrada.split(":").map(Number)
+  const now = new Date()
+  const mins = (now.getHours() * 60 + now.getMinutes()) - (h * 60 + m)
+  if (mins < 0) return "—"
+  return `${Math.floor(mins / 60)}h ${mins % 60}m`
+}
+
 export default function PersonalPage() {
   const { toast } = useToast()
   const [tab, setTab] = useState("todos")
+  const [loading, setLoading] = useState(true)
+  const [empleados, setEmpleados] = useState<any[]>([])
+  const [resumen, setResumen] = useState({
+    total: 0,
+    presentes: 0,
+    ausentes: 0,
+    permisos: 0,
+    porcentaje: 0,
+  })
+
+  useEffect(() => {
+    async function fetchPersonal() {
+      const supabase = createClient()
+      const today = new Date().toISOString().split("T")[0]
+
+      const [usersRes, asistenciaRes] = await Promise.all([
+        supabase.from("users").select("*").eq("activo", true).order("nombre"),
+        supabase.from("asistencia").select("*, obra:obras!obra_asignada_id(nombre)").eq("fecha", today),
+      ])
+
+      if (!usersRes.error && usersRes.data) {
+        const asistenciaMap = new Map()
+        if (asistenciaRes.data) {
+          asistenciaRes.data.forEach((a: any) => {
+            asistenciaMap.set(a.usuario_id, a)
+          })
+        }
+
+        const emps = usersRes.data.map((u: any, i: number) => {
+          const asist = asistenciaMap.get(u.id)
+          const status = !asist ? "Ausente" : asist.tipo === "permiso" ? "Permiso" : "Presente"
+          const tipoUb = asist?.registrado_en === "obra" ? "obra" : u.role === "chofer" && status === "Presente" ? "ruta" : "planta"
+
+          return {
+            id: `EMP-${String(i + 1).padStart(3, "0")}`,
+            nombre: u.nombre,
+            puesto: u.role.replace("_", " "),
+            departamento: getDepartamento(u.role),
+            ubicacion: asist?.obra?.nombre ?? (tipoUb === "planta" ? "Planta Principal" : "—"),
+            tipoUbicacion: tipoUb,
+            horaEntrada: asist?.hora_entrada ?? null,
+            horaSalida: asist?.hora_salida ?? null,
+            status,
+            horasTrabajadas: asist?.hora_entrada ? calcHoras(asist.hora_entrada) : "—",
+          }
+        })
+        setEmpleados(emps)
+
+        const presentes = emps.filter((e: any) => e.status === "Presente").length
+        const ausentes = emps.filter((e: any) => e.status === "Ausente").length
+        const permisos = emps.filter((e: any) => e.status === "Permiso").length
+        setResumen({
+          total: emps.length,
+          presentes,
+          ausentes,
+          permisos,
+          porcentaje: emps.length > 0 ? Math.round((presentes / emps.length) * 100 * 10) / 10 : 0,
+        })
+      }
+      setLoading(false)
+    }
+    fetchPersonal()
+  }, [])
 
   const filtered =
     tab === "todos"
@@ -183,6 +138,14 @@ export default function PersonalPage() {
       : tab === "ausentes"
       ? empleados.filter((e) => e.status === "Ausente" || e.status === "Permiso")
       : empleados
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -208,7 +171,7 @@ export default function PersonalPage() {
               <Users className="h-5 w-5 text-[#D4A843]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[#1E1A14]">{resumenAsistencia.total}</p>
+              <p className="text-2xl font-bold text-[#1E1A14]">{resumen.total}</p>
               <p className="text-xs text-[#7A6D5A]">Total Empleados</p>
             </div>
           </CardContent>
@@ -219,8 +182,8 @@ export default function PersonalPage() {
               <UserCheck className="h-5 w-5 text-[#22C55E]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[#1E1A14]">{resumenAsistencia.presentes}</p>
-              <p className="text-xs text-[#7A6D5A]">Presentes ({resumenAsistencia.porcentaje}%)</p>
+              <p className="text-2xl font-bold text-[#1E1A14]">{resumen.presentes}</p>
+              <p className="text-xs text-[#7A6D5A]">Presentes ({resumen.porcentaje}%)</p>
             </div>
           </CardContent>
         </Card>
@@ -230,7 +193,7 @@ export default function PersonalPage() {
               <UserX className="h-5 w-5 text-[#EF4444]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[#1E1A14]">{resumenAsistencia.ausentes}</p>
+              <p className="text-2xl font-bold text-[#1E1A14]">{resumen.ausentes}</p>
               <p className="text-xs text-[#7A6D5A]">Ausentes</p>
             </div>
           </CardContent>
@@ -241,7 +204,7 @@ export default function PersonalPage() {
               <Clock className="h-5 w-5 text-[#F59E0B]" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-[#1E1A14]">{resumenAsistencia.permisos}</p>
+              <p className="text-2xl font-bold text-[#1E1A14]">{resumen.permisos}</p>
               <p className="text-xs text-[#7A6D5A]">Permisos</p>
             </div>
           </CardContent>
@@ -296,6 +259,12 @@ export default function PersonalPage() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value={tab}>
+              {filtered.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-[#7A6D5A]">
+                  <Users className="mb-2 h-8 w-8 opacity-40" />
+                  <p className="text-sm">No se encontraron empleados en esta categoría</p>
+                </div>
+              ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -340,6 +309,7 @@ export default function PersonalPage() {
                   })}
                 </TableBody>
               </Table>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>

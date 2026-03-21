@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -21,153 +22,9 @@ import {
   AlertTriangle,
   Signal,
   Fuel,
+  Loader2,
 } from "lucide-react"
-
-const resumenChoferes = {
-  total: 8,
-  enRuta: 6,
-  enPlanta: 1,
-  sinActividad: 1,
-}
-
-const choferes = [
-  {
-    id: "CHF-001",
-    nombre: "Juan Carlos Canul May",
-    telefono: "+52 999 234 5678",
-    vehiculo: "Kenworth T680 - YUC-4521",
-    origen: "Planta Principal",
-    destino: "Hotel Regency, Cancún",
-    status: "En Ruta",
-    carga: "Mármol Emperador Dark - 18 m²",
-    eta: "14:30",
-    distanciaRestante: "245 km",
-    velocidad: "85 km/h",
-    combustible: 72,
-    ubicacionActual: "Carretera Mérida-Cancún km 180",
-    ultimaActualizacion: "Hace 3 min",
-    remision: "REM-0148",
-  },
-  {
-    id: "CHF-002",
-    nombre: "Pedro Antonio Pech Dzul",
-    telefono: "+52 999 345 6789",
-    vehiculo: "International ProStar - YUC-3892",
-    origen: "Planta Principal",
-    destino: "Plaza Kukulcán, Mérida",
-    status: "En Ruta",
-    carga: "Travertino Romano - 24 m²",
-    eta: "11:45",
-    distanciaRestante: "12 km",
-    velocidad: "40 km/h",
-    combustible: 58,
-    ubicacionActual: "Periférico Norte, Mérida",
-    ultimaActualizacion: "Hace 1 min",
-    remision: "REM-0149",
-  },
-  {
-    id: "CHF-003",
-    nombre: "Ernesto Pool Canche",
-    telefono: "+52 999 456 7890",
-    vehiculo: "Freightliner M2 - YUC-5103",
-    origen: "Planta Principal",
-    destino: "Residencia Las Nubes",
-    status: "En Ruta",
-    carga: "Carrara White 60x60 - 3 pzas",
-    eta: "12:15",
-    distanciaRestante: "8 km",
-    velocidad: "35 km/h",
-    combustible: 45,
-    ubicacionActual: "Col. Montes de Amé, Mérida",
-    ultimaActualizacion: "Hace 2 min",
-    remision: "REM-0150",
-  },
-  {
-    id: "CHF-004",
-    nombre: "Marco Antonio Dzib Ek",
-    telefono: "+52 999 567 8901",
-    vehiculo: "Kenworth T370 - YUC-2847",
-    origen: "Cantera Ticul",
-    destino: "Planta Principal",
-    status: "En Ruta",
-    carga: "Crema Maya (en bruto) - 40 m²",
-    eta: "13:00",
-    distanciaRestante: "52 km",
-    velocidad: "70 km/h",
-    combustible: 63,
-    ubicacionActual: "Carretera Ticul-Mérida km 28",
-    ultimaActualizacion: "Hace 5 min",
-    remision: "REM-0151",
-  },
-  {
-    id: "CHF-005",
-    nombre: "Wilberth Chan Mis",
-    telefono: "+52 999 678 9012",
-    vehiculo: "International DuraStar - YUC-6234",
-    origen: "Planta Principal",
-    destino: "Torre Corporate VII",
-    status: "En Ruta",
-    carga: "Granito Negro Absoluto - 15 m²",
-    eta: "12:00",
-    distanciaRestante: "5 km",
-    velocidad: "25 km/h",
-    combustible: 81,
-    ubicacionActual: "Av. Prolongación Montejo, Mérida",
-    ultimaActualizacion: "Hace 1 min",
-    remision: "REM-0152",
-  },
-  {
-    id: "CHF-006",
-    nombre: "Gaspar Tuyub Noh",
-    telefono: "+52 999 789 0123",
-    vehiculo: "Freightliner Cascadia - YUC-7891",
-    origen: "Club de Playa Sisal",
-    destino: "Planta Principal",
-    status: "En Ruta",
-    carga: "Vacío (retorno)",
-    eta: "12:30",
-    distanciaRestante: "38 km",
-    velocidad: "75 km/h",
-    combustible: 34,
-    ubicacionActual: "Carretera Sisal-Mérida km 22",
-    ultimaActualizacion: "Hace 4 min",
-    remision: "—",
-  },
-  {
-    id: "CHF-007",
-    nombre: "Ángel Hau Cauich",
-    telefono: "+52 999 890 1234",
-    vehiculo: "Kenworth T370 - YUC-1456",
-    origen: "Planta Principal",
-    destino: "—",
-    status: "En Planta",
-    carga: "Sin carga asignada",
-    eta: "—",
-    distanciaRestante: "—",
-    velocidad: "—",
-    combustible: 90,
-    ubicacionActual: "Planta Principal - Patio de carga",
-    ultimaActualizacion: "Hace 10 min",
-    remision: "—",
-  },
-  {
-    id: "CHF-008",
-    nombre: "David Uicab Pat",
-    telefono: "+52 999 901 2345",
-    vehiculo: "International ProStar - YUC-8234",
-    origen: "—",
-    destino: "—",
-    status: "Día Libre",
-    carga: "—",
-    eta: "—",
-    distanciaRestante: "—",
-    velocidad: "—",
-    combustible: 55,
-    ubicacionActual: "—",
-    ultimaActualizacion: "—",
-    remision: "—",
-  },
-]
+import { createClient } from "@/lib/supabase/client"
 
 const statusColors: Record<string, string> = {
   "En Ruta": "bg-blue-100 text-blue-700",
@@ -175,7 +32,145 @@ const statusColors: Record<string, string> = {
   "Día Libre": "bg-gray-100 text-gray-600",
 }
 
+// Predefined positions for truck markers on the map
+const markerPositions = [
+  { left: "25%", top: "45%" },
+  { left: "55%", top: "30%" },
+  { left: "62%", top: "55%" },
+  { left: "35%", top: "65%" },
+  { left: "70%", top: "40%" },
+  { left: "20%", top: "25%" },
+  { left: "45%", top: "20%" },
+  { left: "75%", top: "60%" },
+]
+
+function getShortName(nombre: string): string {
+  const parts = nombre.split(" ")
+  if (parts.length >= 2) {
+    // First initial + first last name (skip middle names, last names start after first 1-2 parts)
+    const firstName = parts[0]
+    // Find the last name - typically the 3rd word for Hispanic names (first middle last1 last2)
+    const lastName = parts.length >= 3 ? parts[2] : parts[1]
+    return `${firstName[0]}. ${lastName}`
+  }
+  return nombre
+}
+
+interface ChoferDisplay {
+  id: string
+  nombre: string
+  telefono: string
+  vehiculo: string
+  origen: string
+  destino: string
+  status: string
+  carga: string
+  eta: string
+  distanciaRestante: string
+  velocidad: string
+  combustible: number
+  ubicacionActual: string
+  ultimaActualizacion: string
+  remision: string
+}
+
 export default function ChoferesPage() {
+  const [choferes, setChoferes] = useState<ChoferDisplay[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchChoferes() {
+      const supabase = createClient()
+      const today = new Date().toISOString().split("T")[0]
+
+      const [usersRes, vehiculosRes, asistenciaRes, remisionesRes] = await Promise.all([
+        supabase.from("users").select("*").eq("role", "chofer").eq("activo", true),
+        supabase.from("vehiculos").select("*").eq("activo", true),
+        supabase.from("asistencia").select("*").eq("fecha", today),
+        supabase.from("remisiones").select("*, obra:obras(nombre, ubicacion)").in("estatus", ["creada", "en_transito"]),
+      ])
+
+      const users = usersRes.data ?? []
+      const vehiculos = vehiculosRes.data ?? []
+      const asistencias = asistenciaRes.data ?? []
+      const remisiones = remisionesRes.data ?? []
+
+      const mapped: ChoferDisplay[] = users.map((user: any) => {
+        // Find assigned vehicle
+        const vehiculo = vehiculos.find((v: any) => v.chofer_asignado_id === user.id)
+        const vehiculoDesc = vehiculo
+          ? `${vehiculo.marca ?? ""} ${vehiculo.modelo ?? ""} - ${vehiculo.placa ?? ""}`.trim()
+          : "Sin vehículo"
+
+        // Check today's asistencia
+        const asistencia = asistencias.find((a: any) => a.user_id === user.id)
+
+        // Find active remisiones for this chofer
+        const activeRemisiones = remisiones.filter((r: any) => r.chofer_id === user.id)
+        const hasActiveRemision = activeRemisiones.length > 0
+        const remisionEnTransito = activeRemisiones.find((r: any) => r.estatus === "en_transito")
+
+        // Determine status
+        let status = "Día Libre"
+        if (asistencia) {
+          if (hasActiveRemision) {
+            status = "En Ruta"
+          } else {
+            status = "En Planta"
+          }
+        }
+
+        // Build destination and cargo info from active remision
+        const mainRemision = remisionEnTransito ?? activeRemisiones[0]
+        const destino = mainRemision?.obra?.nombre ?? "—"
+        const carga = mainRemision
+          ? mainRemision.descripcion_carga ?? mainRemision.notas ?? "Carga asignada"
+          : status === "En Planta" ? "Sin carga asignada" : "—"
+
+        return {
+          id: user.id,
+          nombre: user.nombre ?? `${user.nombre ?? ""}`,
+          telefono: user.telefono ?? "—",
+          vehiculo: vehiculoDesc,
+          origen: hasActiveRemision ? "Planta Principal" : "—",
+          destino,
+          status,
+          carga,
+          eta: "—",
+          distanciaRestante: "—",
+          velocidad: "—",
+          combustible: 0,
+          ubicacionActual: status === "En Ruta" ? (destino !== "—" ? `Rumbo a ${destino}` : "—") : status === "En Planta" ? "Planta Principal" : "—",
+          ultimaActualizacion: "—",
+          remision: mainRemision?.folio ?? "—",
+        }
+      })
+
+      setChoferes(mapped)
+      setLoading(false)
+    }
+    fetchChoferes()
+  }, [])
+
+  // Computed resumen
+  const resumenChoferes = {
+    total: choferes.length,
+    enRuta: choferes.filter((c) => c.status === "En Ruta").length,
+    enPlanta: choferes.filter((c) => c.status === "En Planta").length,
+    sinActividad: choferes.filter((c) => c.status === "Día Libre").length,
+  }
+
+  const choferesEnRuta = choferes.filter((c) => c.status === "En Ruta")
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+        <span className="ml-3 text-[#7A6D5A]">Cargando choferes...</span>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -260,43 +255,15 @@ export default function ChoferesPage() {
                   <circle cx="400" cy="200" r="80" stroke="#7A6D5A" strokeWidth="1" fill="none" />
                 </svg>
               </div>
-              {/* Truck markers */}
-              <div className="absolute left-[25%] top-[45%]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg animate-pulse">
-                  <Truck className="h-4 w-4" />
+              {/* Truck markers - dynamic based on en ruta choferes */}
+              {choferesEnRuta.slice(0, markerPositions.length).map((c, i) => (
+                <div key={c.id} className="absolute" style={{ left: markerPositions[i].left, top: markerPositions[i].top }}>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg animate-pulse">
+                    <Truck className="h-4 w-4" />
+                  </div>
+                  <p className="mt-1 text-[9px] font-medium text-center text-[#1E1A14]">{getShortName(c.nombre)}</p>
                 </div>
-                <p className="mt-1 text-[9px] font-medium text-center text-[#1E1A14]">J. Canul</p>
-              </div>
-              <div className="absolute left-[55%] top-[30%]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg animate-pulse">
-                  <Truck className="h-4 w-4" />
-                </div>
-                <p className="mt-1 text-[9px] font-medium text-center text-[#1E1A14]">P. Pech</p>
-              </div>
-              <div className="absolute left-[62%] top-[55%]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg">
-                  <Truck className="h-4 w-4" />
-                </div>
-                <p className="mt-1 text-[9px] font-medium text-center text-[#1E1A14]">E. Pool</p>
-              </div>
-              <div className="absolute left-[35%] top-[65%]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg">
-                  <Truck className="h-4 w-4" />
-                </div>
-                <p className="mt-1 text-[9px] font-medium text-center text-[#1E1A14]">M. Dzib</p>
-              </div>
-              <div className="absolute left-[70%] top-[40%]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg">
-                  <Truck className="h-4 w-4" />
-                </div>
-                <p className="mt-1 text-[9px] font-medium text-center text-[#1E1A14]">W. Chan</p>
-              </div>
-              <div className="absolute left-[20%] top-[25%]">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg">
-                  <Truck className="h-4 w-4" />
-                </div>
-                <p className="mt-1 text-[9px] font-medium text-center text-[#1E1A14]">G. Tuyub</p>
-              </div>
+              ))}
               {/* Planta marker */}
               <div className="absolute left-[48%] top-[48%]">
                 <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#D4A843] text-white shadow-lg border-2 border-white">
@@ -310,6 +277,10 @@ export default function ChoferesPage() {
                 <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-blue-500" /> En Ruta</div>
                 <div className="flex items-center gap-1"><div className="h-2 w-2 rounded-full bg-[#D4A843]" /> Planta</div>
               </div>
+              {/* Empty state for map */}
+              {choferesEnRuta.length === 0 && (
+                <p className="z-10 text-sm text-[#7A6D5A]">No hay choferes en ruta actualmente</p>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -321,9 +292,10 @@ export default function ChoferesPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {choferes
-                .filter((c) => c.status === "En Ruta")
-                .map((c) => (
+              {choferesEnRuta.length === 0 && (
+                <p className="text-sm text-[#7A6D5A] text-center py-6">No hay entregas activas</p>
+              )}
+              {choferesEnRuta.map((c) => (
                   <div
                     key={c.id}
                     className="rounded-lg border border-[#E0DBD1] p-3"
@@ -357,6 +329,9 @@ export default function ChoferesPage() {
           <CardTitle className="text-base">Todos los Choferes</CardTitle>
         </CardHeader>
         <CardContent>
+          {choferes.length === 0 ? (
+            <p className="text-sm text-[#7A6D5A] text-center py-8">No se encontraron choferes activos</p>
+          ) : (
           <Table>
             <TableHeader>
               <TableRow>
@@ -405,7 +380,7 @@ export default function ChoferesPage() {
                     )}
                   </TableCell>
                   <TableCell>
-                    <Badge className={statusColors[c.status] + " text-[10px]"}>
+                    <Badge className={(statusColors[c.status] ?? "bg-gray-100 text-gray-600") + " text-[10px]"}>
                       {c.status}
                     </Badge>
                   </TableCell>
@@ -413,6 +388,7 @@ export default function ChoferesPage() {
               ))}
             </TableBody>
           </Table>
+          )}
         </CardContent>
       </Card>
     </div>

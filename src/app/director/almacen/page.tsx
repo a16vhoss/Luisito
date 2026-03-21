@@ -23,147 +23,11 @@ import {
   Download,
   Warehouse,
   ArrowUpRight,
+  Loader2,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
-
-const resumen = {
-  totalItems: 148,
-  valorTotal: "$4,250,000",
-  stockCritico: 8,
-  entradasHoy: 12,
-}
-
-const materiales = [
-  {
-    id: "MAT-001",
-    nombre: "Mármol Carrara White",
-    tipo: "Mármol Natural",
-    existencia: 20,
-    unidad: "m²",
-    minimo: 50,
-    precio: "$2,800/m²",
-    ubicacion: "Nave A - Rack 1",
-    status: "critico",
-    ultimoMovimiento: "18 Mar 2026",
-  },
-  {
-    id: "MAT-002",
-    nombre: "Ocean Blue Quartz",
-    tipo: "Cuarzo",
-    existencia: 12,
-    unidad: "m²",
-    minimo: 30,
-    precio: "$3,200/m²",
-    ubicacion: "Nave A - Rack 3",
-    status: "critico",
-    ultimoMovimiento: "17 Mar 2026",
-  },
-  {
-    id: "MAT-003",
-    nombre: "Emperador Dark",
-    tipo: "Mármol Natural",
-    existencia: 35,
-    unidad: "m²",
-    minimo: 40,
-    precio: "$2,400/m²",
-    ubicacion: "Nave B - Rack 1",
-    status: "bajo",
-    ultimoMovimiento: "16 Mar 2026",
-  },
-  {
-    id: "MAT-004",
-    nombre: "Granito Negro Absoluto",
-    tipo: "Granito",
-    existencia: 8,
-    unidad: "m²",
-    minimo: 25,
-    precio: "$1,900/m²",
-    ubicacion: "Nave B - Rack 4",
-    status: "critico",
-    ultimoMovimiento: "18 Mar 2026",
-  },
-  {
-    id: "MAT-005",
-    nombre: "Crema Maya",
-    tipo: "Mármol Regional",
-    existencia: 45,
-    unidad: "m²",
-    minimo: 60,
-    precio: "$1,200/m²",
-    ubicacion: "Nave A - Rack 2",
-    status: "bajo",
-    ultimoMovimiento: "15 Mar 2026",
-  },
-  {
-    id: "MAT-006",
-    nombre: "Travertino Romano",
-    tipo: "Travertino",
-    existencia: 85,
-    unidad: "m²",
-    minimo: 40,
-    precio: "$2,100/m²",
-    ubicacion: "Nave C - Rack 1",
-    status: "ok",
-    ultimoMovimiento: "18 Mar 2026",
-  },
-  {
-    id: "MAT-007",
-    nombre: "Onyx Honey",
-    tipo: "Ónix",
-    existencia: 6,
-    unidad: "m²",
-    minimo: 10,
-    precio: "$8,500/m²",
-    ubicacion: "Nave A - Especial",
-    status: "critico",
-    ultimoMovimiento: "14 Mar 2026",
-  },
-  {
-    id: "MAT-008",
-    nombre: "Calacatta Gold",
-    tipo: "Mármol Natural",
-    existencia: 28,
-    unidad: "m²",
-    minimo: 20,
-    precio: "$5,600/m²",
-    ubicacion: "Nave A - Rack 5",
-    status: "ok",
-    ultimoMovimiento: "17 Mar 2026",
-  },
-  {
-    id: "MAT-009",
-    nombre: "Silestone Blanco Zeus",
-    tipo: "Cuarzo Compacto",
-    existencia: 62,
-    unidad: "m²",
-    minimo: 30,
-    precio: "$3,400/m²",
-    ubicacion: "Nave C - Rack 2",
-    status: "ok",
-    ultimoMovimiento: "18 Mar 2026",
-  },
-  {
-    id: "MAT-010",
-    nombre: "Piedra Conchuela",
-    tipo: "Piedra Natural",
-    existencia: 120,
-    unidad: "m²",
-    minimo: 50,
-    precio: "$650/m²",
-    ubicacion: "Patio Exterior",
-    status: "ok",
-    ultimoMovimiento: "16 Mar 2026",
-  },
-]
-
-const movimientosRecientes = [
-  { tipo: "Salida", material: "Carrara White", cantidad: "12 m²", destino: "OBR-001 Las Nubes", fecha: "18 Mar", user: "A. Nah" },
-  { tipo: "Salida", material: "Negro Absoluto", cantidad: "8 m²", destino: "OBR-003 Torre Corp.", fecha: "18 Mar", user: "A. Nah" },
-  { tipo: "Entrada", material: "Travertino Romano", cantidad: "40 m²", destino: "Proveedor: Mármoles del Valle", fecha: "18 Mar", user: "A. Nah" },
-  { tipo: "Salida", material: "Crema Maya", cantidad: "6 m²", destino: "OBR-005 Montejo 480", fecha: "17 Mar", user: "L. Balam" },
-  { tipo: "Entrada", material: "Silestone Blanco", cantidad: "25 m²", destino: "Proveedor: Cosentino MX", fecha: "17 Mar", user: "A. Nah" },
-]
+import { createClient } from "@/lib/supabase/client"
 
 const statusLabels: Record<string, { label: string; color: string }> = {
   critico: { label: "Crítico", color: "bg-red-100 text-red-700" },
@@ -174,6 +38,76 @@ const statusLabels: Record<string, { label: string; color: string }> = {
 export default function AlmacenPage() {
   const { toast } = useToast()
   const [tab, setTab] = useState("inventario")
+  const [materiales, setMateriales] = useState<any[]>([])
+  const [movimientos, setMovimientos] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchAlmacen() {
+      const supabase = createClient()
+      const [matRes, movRes] = await Promise.all([
+        supabase.from("materiales").select("*").eq("activo", true).order("nombre"),
+        supabase.from("movimientos_almacen")
+          .select("*, material:materiales(nombre, unidad_medida), responsable:users(nombre), obra:obras(nombre)")
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ])
+
+      if (!matRes.error && matRes.data) {
+        setMateriales(matRes.data.map((m: any) => ({
+          id: m.id,
+          nombre: m.nombre,
+          tipo: m.tipo,
+          existencia: m.stock_actual,
+          unidad: m.unidad_medida,
+          minimo: m.stock_minimo,
+          precio: m.precio_referencia ? `$${Number(m.precio_referencia).toLocaleString("es-MX")}/${m.unidad_medida}` : "—",
+          ubicacion: "Almacén",
+          status: m.stock_actual < m.stock_minimo * 0.5 ? "critico" : m.stock_actual < m.stock_minimo ? "bajo" : "ok",
+          ultimoMovimiento: "—",
+          _stock_actual: m.stock_actual,
+          _precio_referencia: m.precio_referencia,
+        })))
+      }
+
+      if (!movRes.error && movRes.data) {
+        setMovimientos(movRes.data.map((mov: any) => ({
+          tipo: mov.tipo === "entrada" ? "Entrada" : "Salida",
+          material: mov.material?.nombre ?? "—",
+          cantidad: `${mov.cantidad} ${mov.material?.unidad_medida ?? ""}`,
+          destino: mov.tipo === "entrada"
+            ? `Proveedor`
+            : mov.obra?.nombre ? `OBR - ${mov.obra.nombre}` : "—",
+          fecha: new Date(mov.created_at).toLocaleDateString("es-MX", { day: "numeric", month: "short" }),
+          user: mov.responsable?.nombre?.split(" ").map((n: string) => n[0]).join(". ") ?? "—",
+          _tipo_raw: mov.tipo,
+          _created_at: mov.created_at,
+        })))
+      }
+      setLoading(false)
+    }
+    fetchAlmacen()
+  }, [])
+
+  const resumen = {
+    totalItems: materiales.length,
+    valorTotal: `$${materiales.reduce((sum, m) => sum + (m._stock_actual ?? 0) * (m._precio_referencia ?? 0), 0).toLocaleString("es-MX")}`,
+    stockCritico: materiales.filter((m) => m.status === "critico").length,
+    entradasHoy: movimientos.filter((mov) => {
+      if (mov._tipo_raw !== "entrada") return false
+      const today = new Date()
+      const movDate = new Date(mov._created_at)
+      return movDate.toDateString() === today.toDateString()
+    }).length,
+  }
+
+  if (loading) {
+    return (
+      <div className="flex h-96 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -274,6 +208,13 @@ export default function AlmacenPage() {
               </div>
             </CardHeader>
             <CardContent>
+              {materiales.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-[#7A6D5A]">
+                  <Package className="mb-3 h-10 w-10 text-[#D4A843]/40" />
+                  <p className="text-sm font-medium">No hay materiales registrados</p>
+                  <p className="text-xs">Los materiales aparecerán aquí una vez que se registren.</p>
+                </div>
+              ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -338,6 +279,7 @@ export default function AlmacenPage() {
                   })}
                 </TableBody>
               </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -348,6 +290,13 @@ export default function AlmacenPage() {
               <CardTitle className="text-base">Movimientos Recientes</CardTitle>
             </CardHeader>
             <CardContent>
+              {movimientos.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 text-[#7A6D5A]">
+                  <ArrowUpRight className="mb-3 h-10 w-10 text-[#D4A843]/40" />
+                  <p className="text-sm font-medium">Sin movimientos recientes</p>
+                  <p className="text-xs">Los movimientos aparecerán aquí conforme se registren.</p>
+                </div>
+              ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -360,7 +309,7 @@ export default function AlmacenPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {movimientosRecientes.map((mov, i) => (
+                  {movimientos.map((mov, i) => (
                     <TableRow key={i}>
                       <TableCell>
                         <Badge
@@ -387,6 +336,7 @@ export default function AlmacenPage() {
                   ))}
                 </TableBody>
               </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

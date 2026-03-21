@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Search,
   Plus,
@@ -13,8 +13,10 @@ import {
   Eye,
   Edit,
   MoreHorizontal,
+  Loader2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 // ── Datos ──
 type Employee = {
@@ -49,31 +51,6 @@ const roleColors: Record<string, string> = {
   marmolero: "bg-stone-100 text-stone-700",
 }
 
-const empleados: Employee[] = [
-  { id: "1", nombre: "Andrée Hossfeldt", email: "andree@marmolescaribe.com", telefono: "998-841-2300", role: "director", activo: true, fotoUrl: null, fechaIngreso: "2019-06-01", obraAsignada: null },
-  { id: "2", nombre: "Laura Castro Medina", email: "laura@marmolescaribe.com", telefono: "998-267-4518", role: "admin", activo: true, fotoUrl: null, fechaIngreso: "2020-03-15", obraAsignada: null },
-  { id: "3", nombre: "María Fernanda Rodríguez Canto", email: "maria@marmolescaribe.com", telefono: "998-312-8845", role: "rrhh", activo: true, fotoUrl: null, fechaIngreso: "2021-01-10", obraAsignada: null },
-  { id: "4", nombre: "Roberto Méndez Solís", email: "roberto@marmolescaribe.com", telefono: "998-455-7721", role: "jefe_taller", activo: true, fotoUrl: null, fechaIngreso: "2019-09-20", obraAsignada: null },
-  { id: "5", nombre: "Carlos Herrera Góngora", email: "carlos.herrera@marmolescaribe.com", telefono: "998-533-6190", role: "residente", activo: true, fotoUrl: null, fechaIngreso: "2021-08-01", obraAsignada: "Residencia Las Nubes" },
-  { id: "6", nombre: "Fernando López Cetina", email: "fernando@marmolescaribe.com", telefono: "998-617-3042", role: "residente", activo: true, fotoUrl: null, fechaIngreso: "2022-02-15", obraAsignada: "Hotel Regency Cancún" },
-  { id: "7", nombre: "Juan Carlos Canul May", email: "jc.canul@marmolescaribe.com", telefono: "999-234-5678", role: "chofer", activo: true, fotoUrl: null, fechaIngreso: "2020-11-01", obraAsignada: null },
-  { id: "8", nombre: "Pedro Antonio Pech Dzul", email: "pedro.pech@marmolescaribe.com", telefono: "999-345-6789", role: "chofer", activo: true, fotoUrl: null, fechaIngreso: "2021-04-15", obraAsignada: null },
-  { id: "9", nombre: "Miguel Ángel Tun Canul", email: "miguel.tun@marmolescaribe.com", telefono: "999-456-7801", role: "marmolero", activo: true, fotoUrl: null, fechaIngreso: "2020-07-15", obraAsignada: null },
-  { id: "10", nombre: "José Luis Chi Pech", email: "jose.chi@marmolescaribe.com", telefono: "999-567-8912", role: "marmolero", activo: true, fotoUrl: null, fechaIngreso: "2021-06-01", obraAsignada: null },
-  { id: "11", nombre: "Ricardo Alejandro May Uc", email: "ricardo.may@marmolescaribe.com", telefono: "999-678-9023", role: "marmolero", activo: true, fotoUrl: null, fechaIngreso: "2022-01-10", obraAsignada: null },
-  { id: "12", nombre: "Luis Enrique Balam Pool", email: "luis.balam@marmolescaribe.com", telefono: "999-789-0134", role: "marmolero", activo: true, fotoUrl: null, fechaIngreso: "2022-05-20", obraAsignada: null },
-  { id: "13", nombre: "Ernesto Pool Canché", email: "ernesto.pool@marmolescaribe.com", telefono: "999-890-1245", role: "chofer", activo: true, fotoUrl: null, fechaIngreso: "2021-09-01", obraAsignada: null },
-  { id: "14", nombre: "Marco Antonio Dzib Ek", email: "marco.dzib@marmolescaribe.com", telefono: "999-901-2356", role: "chofer", activo: true, fotoUrl: null, fechaIngreso: "2022-03-01", obraAsignada: null },
-  { id: "15", nombre: "Armando Nah Dzib", email: "armando.nah@marmolescaribe.com", telefono: "999-123-4509", role: "marmolero", activo: true, fotoUrl: null, fechaIngreso: "2021-02-15", obraAsignada: null },
-  { id: "16", nombre: "Jorge Iván Caamal Ku", email: "jorge.caamal@marmolescaribe.com", telefono: "999-234-5610", role: "marmolero", activo: true, fotoUrl: null, fechaIngreso: "2023-01-15", obraAsignada: null },
-  { id: "17", nombre: "Fernando Euán Couoh", email: "fernando.euan@marmolescaribe.com", telefono: "999-345-6721", role: "marmolero", activo: true, fotoUrl: null, fechaIngreso: "2022-08-01", obraAsignada: null },
-  { id: "18", nombre: "Carlos Alberto Pérez Novelo", email: "carlos.perez@marmolescaribe.com", telefono: "998-456-7832", role: "residente", activo: true, fotoUrl: null, fechaIngreso: "2020-04-01", obraAsignada: "Torre Corporate VII" },
-  { id: "19", nombre: "Wilberth Chan Mis", email: "wilberth.chan@marmolescaribe.com", telefono: "999-567-8943", role: "chofer", activo: true, fotoUrl: null, fechaIngreso: "2022-06-15", obraAsignada: null },
-  { id: "20", nombre: "Daniel Flores Kú", email: "daniel.flores@marmolescaribe.com", telefono: "998-678-9054", role: "marmolero", activo: false, fotoUrl: null, fechaIngreso: "2020-10-01", obraAsignada: null },
-  { id: "21", nombre: "Gaspar Tuyub Noh", email: "gaspar.tuyub@marmolescaribe.com", telefono: "999-789-0165", role: "chofer", activo: true, fotoUrl: null, fechaIngreso: "2023-03-01", obraAsignada: null },
-  { id: "22", nombre: "Ángel Hau Cauich", email: "angel.hau@marmolescaribe.com", telefono: "999-890-1276", role: "chofer", activo: true, fotoUrl: null, fechaIngreso: "2023-05-15", obraAsignada: null },
-  { id: "23", nombre: "David Uicab Pat", email: "david.uicab@marmolescaribe.com", telefono: "999-901-2387", role: "chofer", activo: false, fotoUrl: null, fechaIngreso: "2023-08-01", obraAsignada: null },
-]
 
 function getInitials(name: string) {
   return name
@@ -86,9 +63,36 @@ function getInitials(name: string) {
 
 export default function PersonalPage() {
   const { toast } = useToast()
+  const [empleados, setEmpleados] = useState<Employee[]>([])
+  const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [filterRole, setFilterRole] = useState<string>("todos")
   const [filterActivo, setFilterActivo] = useState<string>("todos")
+
+  useEffect(() => {
+    async function fetchEmpleados() {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .order("nombre")
+      if (!error && data) {
+        setEmpleados(data.map(u => ({
+          id: u.id,
+          nombre: u.nombre,
+          email: u.email,
+          telefono: u.telefono ?? "",
+          role: u.role,
+          activo: u.activo,
+          fotoUrl: u.foto_url,
+          fechaIngreso: u.created_at.split("T")[0],
+          obraAsignada: null, // Will be null for now
+        })))
+      }
+      setLoading(false)
+    }
+    fetchEmpleados()
+  }, [])
 
   const filtered = empleados.filter((e) => {
     if (filterRole !== "todos" && e.role !== filterRole) return false
@@ -103,6 +107,14 @@ export default function PersonalPage() {
 
   const totalActivos = empleados.filter((e) => e.activo).length
   const totalInactivos = empleados.filter((e) => !e.activo).length
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">

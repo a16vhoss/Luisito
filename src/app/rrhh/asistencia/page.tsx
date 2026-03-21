@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import {
   Search,
   Filter,
@@ -13,8 +13,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Users,
+  Loader2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { createClient } from "@/lib/supabase/client"
 
 // ── Datos ──
 type AttendanceRecord = {
@@ -36,59 +38,81 @@ const tipoConfig: Record<string, { label: string; color: string; icon: typeof Us
   permiso: { label: "Permiso", color: "bg-blue-100 text-blue-700", icon: AlertCircle },
 }
 
-const registrosAsistencia: AttendanceRecord[] = [
-  // ── Viernes 20 de marzo 2026 (hoy) ──
-  { id: "1", empleado: "Roberto Méndez Solís", role: "jefe_taller", fecha: "2026-03-20", horaEntrada: "06:50", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "2", empleado: "Miguel Ángel Tun Canul", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:00", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "3", empleado: "José Luis Chi Pech", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:12", horaSalida: null, tipo: "retardo", registradoEn: "planta", obraAsignada: null },
-  { id: "4", empleado: "Ricardo Alejandro May Uc", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:18", horaSalida: null, tipo: "retardo", registradoEn: "planta", obraAsignada: null },
-  { id: "5", empleado: "Luis Enrique Balam Pool", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:00", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "6", empleado: "Armando Nah Dzib", role: "marmolero", fecha: "2026-03-20", horaEntrada: "06:58", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "7", empleado: "Jorge Iván Caamal Ku", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:00", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "8", empleado: "Fernando Euán Couoh", role: "marmolero", fecha: "2026-03-20", horaEntrada: null, horaSalida: null, tipo: "falta", registradoEn: "planta", obraAsignada: null },
-  { id: "9", empleado: "Juan Carlos Canul May", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:30", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "10", empleado: "Pedro Antonio Pech Dzul", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:40", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "11", empleado: "Ernesto Pool Canché", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:35", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "12", empleado: "Marco Antonio Dzib Ek", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:45", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "13", empleado: "Wilberth Chan Mis", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:42", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "14", empleado: "Gaspar Tuyub Noh", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:38", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "15", empleado: "Ángel Hau Cauich", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:45", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "16", empleado: "Carlos Herrera Góngora", role: "residente", fecha: "2026-03-20", horaEntrada: "07:30", horaSalida: null, tipo: "normal", registradoEn: "obra", obraAsignada: "Residencia Las Nubes" },
-  { id: "17", empleado: "Fernando López Cetina", role: "residente", fecha: "2026-03-20", horaEntrada: "07:45", horaSalida: null, tipo: "normal", registradoEn: "obra", obraAsignada: "Hotel Regency Cancún" },
-  { id: "18", empleado: "Carlos Alberto Pérez Novelo", role: "residente", fecha: "2026-03-20", horaEntrada: "07:15", horaSalida: null, tipo: "normal", registradoEn: "obra", obraAsignada: "Torre Corporate VII" },
-  // ── Jueves 19 de marzo 2026 (ayer) ──
-  { id: "19", empleado: "Roberto Méndez Solís", role: "jefe_taller", fecha: "2026-03-19", horaEntrada: "06:48", horaSalida: "16:30", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "20", empleado: "Miguel Ángel Tun Canul", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "21", empleado: "José Luis Chi Pech", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "22", empleado: "Ricardo Alejandro May Uc", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:22", horaSalida: "16:00", tipo: "retardo", registradoEn: "planta", obraAsignada: null },
-  { id: "23", empleado: "Luis Enrique Balam Pool", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "24", empleado: "Armando Nah Dzib", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:01", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "25", empleado: "Jorge Iván Caamal Ku", role: "marmolero", fecha: "2026-03-19", horaEntrada: "06:58", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "26", empleado: "Fernando Euán Couoh", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "27", empleado: "Juan Carlos Canul May", role: "chofer", fecha: "2026-03-19", horaEntrada: "06:30", horaSalida: "17:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "28", empleado: "Pedro Antonio Pech Dzul", role: "chofer", fecha: "2026-03-19", horaEntrada: "06:35", horaSalida: "17:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "29", empleado: "Ernesto Pool Canché", role: "chofer", fecha: "2026-03-19", horaEntrada: "06:40", horaSalida: "16:30", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "30", empleado: "Carlos Herrera Góngora", role: "residente", fecha: "2026-03-19", horaEntrada: "07:20", horaSalida: "17:30", tipo: "normal", registradoEn: "obra", obraAsignada: "Residencia Las Nubes" },
-  { id: "31", empleado: "Carlos Alberto Pérez Novelo", role: "residente", fecha: "2026-03-19", horaEntrada: "07:10", horaSalida: "17:00", tipo: "normal", registradoEn: "obra", obraAsignada: "Torre Corporate VII" },
-  { id: "32", empleado: "Fernando López Cetina", role: "residente", fecha: "2026-03-19", horaEntrada: null, horaSalida: null, tipo: "permiso", registradoEn: "obra", obraAsignada: "Hotel Regency Cancún" },
-]
-
-// Resumen semanal
-const resumenSemanal = [
-  { dia: "Lun 16", normal: 16, retardo: 1, falta: 0, permiso: 1 },
-  { dia: "Mar 17", normal: 15, retardo: 2, falta: 1, permiso: 0 },
-  { dia: "Mié 18", normal: 16, retardo: 1, falta: 0, permiso: 1 },
-  { dia: "Jue 19", normal: 14, retardo: 1, falta: 0, permiso: 1 },
-  { dia: "Vie 20", normal: 14, retardo: 2, falta: 1, permiso: 0 },
+const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
+const diasCortos = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
+const meses = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ]
 
 export default function AsistenciaPage() {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterTipo, setFilterTipo] = useState<string>("todos")
-  const [selectedDate, setSelectedDate] = useState("2026-03-20")
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date()
+    return today.toISOString().split("T")[0]
+  })
+  const [registros, setRegistros] = useState<AttendanceRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [resumenSemanal, setResumenSemanal] = useState<{dia: string, normal: number, retardo: number, falta: number, permiso: number}[]>([])
 
-  const filtered = registrosAsistencia.filter((a) => {
+  useEffect(() => {
+    async function fetchAsistencia() {
+      setLoading(true)
+      const supabase = createClient()
+      // Fetch attendance records with user info
+      const { data, error } = await supabase
+        .from("asistencia")
+        .select("*, usuario:users!usuario_id(nombre, role)")
+        .order("fecha", { ascending: false })
+
+      if (!error && data) {
+        const mapped = data.map((a: any) => ({
+          id: a.id,
+          empleado: a.usuario?.nombre ?? "—",
+          role: a.usuario?.role ?? "",
+          fecha: a.fecha,
+          horaEntrada: a.hora_entrada,
+          horaSalida: a.hora_salida,
+          tipo: a.tipo,
+          registradoEn: a.registrado_en,
+          obraAsignada: null,
+        }))
+        setRegistros(mapped)
+
+        // Compute resumen semanal: last 5 work days from today
+        const workDays: string[] = []
+        const d = new Date()
+        while (workDays.length < 5) {
+          const dow = d.getDay()
+          if (dow !== 0 && dow !== 6) {
+            workDays.push(d.toISOString().split("T")[0])
+          }
+          d.setDate(d.getDate() - 1)
+        }
+        workDays.reverse()
+
+        const resumen = workDays.map((dateStr) => {
+          const dateObj = new Date(dateStr + "T12:00:00")
+          const dayLabel = diasCortos[dateObj.getDay()] + " " + dateObj.getDate()
+          const dayRecords = mapped.filter((r: AttendanceRecord) => r.fecha === dateStr)
+          return {
+            dia: dayLabel,
+            normal: dayRecords.filter((r: AttendanceRecord) => r.tipo === "normal").length,
+            retardo: dayRecords.filter((r: AttendanceRecord) => r.tipo === "retardo").length,
+            falta: dayRecords.filter((r: AttendanceRecord) => r.tipo === "falta").length,
+            permiso: dayRecords.filter((r: AttendanceRecord) => r.tipo === "permiso").length,
+          }
+        })
+        setResumenSemanal(resumen)
+      }
+      setLoading(false)
+    }
+    fetchAsistencia()
+  }, [])
+
+  const filtered = registros.filter((a) => {
     if (a.fecha !== selectedDate) return false
     if (filterTipo !== "todos" && a.tipo !== filterTipo) return false
     if (searchTerm && !a.empleado.toLowerCase().includes(searchTerm.toLowerCase())) return false
@@ -96,11 +120,40 @@ export default function AsistenciaPage() {
   })
 
   const todayStats = {
-    total: registrosAsistencia.filter((a) => a.fecha === selectedDate).length,
-    normal: registrosAsistencia.filter((a) => a.fecha === selectedDate && a.tipo === "normal").length,
-    retardo: registrosAsistencia.filter((a) => a.fecha === selectedDate && a.tipo === "retardo").length,
-    falta: registrosAsistencia.filter((a) => a.fecha === selectedDate && a.tipo === "falta").length,
-    permiso: registrosAsistencia.filter((a) => a.fecha === selectedDate && a.tipo === "permiso").length,
+    total: registros.filter((a) => a.fecha === selectedDate).length,
+    normal: registros.filter((a) => a.fecha === selectedDate && a.tipo === "normal").length,
+    retardo: registros.filter((a) => a.fecha === selectedDate && a.tipo === "retardo").length,
+    falta: registros.filter((a) => a.fecha === selectedDate && a.tipo === "falta").length,
+    permiso: registros.filter((a) => a.fecha === selectedDate && a.tipo === "permiso").length,
+  }
+
+  // Dynamic date display
+  const selectedDateObj = new Date(selectedDate + "T12:00:00")
+  const selectedDayName = diasSemana[selectedDateObj.getDay()]
+  const selectedDayNum = selectedDateObj.getDate()
+  const selectedMonthName = meses[selectedDateObj.getMonth()]
+  const selectedYear = selectedDateObj.getFullYear()
+
+  function navigateDate(offset: number) {
+    const d = new Date(selectedDate + "T12:00:00")
+    d.setDate(d.getDate() + offset)
+    setSelectedDate(d.toISOString().split("T")[0])
+  }
+
+  // Max for bar chart normalization
+  const maxTotal = useMemo(() => {
+    if (resumenSemanal.length === 0) return 18
+    const m = Math.max(...resumenSemanal.map((d) => d.normal + d.retardo + d.falta + d.permiso))
+    return m > 0 ? m : 18
+  }, [resumenSemanal])
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+        <span className="ml-3 text-sm text-[#7A6D5A]">Cargando asistencia...</span>
+      </div>
+    )
   }
 
   return (
@@ -122,15 +175,15 @@ export default function AsistenciaPage() {
         {/* Date Nav */}
         <div className="rounded-xl border border-[#E0DBD1] bg-white p-4">
           <div className="flex items-center justify-between">
-            <button className="rounded-md p-1 text-[#7A6D5A] hover:bg-[#F0EDE8]">
+            <button onClick={() => navigateDate(-1)} className="rounded-md p-1 text-[#7A6D5A] hover:bg-[#F0EDE8]">
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="text-center">
-              <p className="text-sm font-semibold text-[#1E1A14]">Viernes</p>
-              <p className="text-2xl font-bold text-[#D4A843]">20</p>
-              <p className="text-xs text-[#7A6D5A]">Marzo 2026</p>
+              <p className="text-sm font-semibold text-[#1E1A14]">{selectedDayName}</p>
+              <p className="text-2xl font-bold text-[#D4A843]">{selectedDayNum}</p>
+              <p className="text-xs text-[#7A6D5A]">{selectedMonthName} {selectedYear}</p>
             </div>
-            <button className="rounded-md p-1 text-[#7A6D5A] hover:bg-[#F0EDE8]">
+            <button onClick={() => navigateDate(1)} className="rounded-md p-1 text-[#7A6D5A] hover:bg-[#F0EDE8]">
               <ChevronRight className="h-4 w-4" />
             </button>
           </div>
@@ -195,10 +248,10 @@ export default function AsistenciaPage() {
                 <div className="flex w-full flex-col items-center" style={{ height: maxH }}>
                   {total > 0 ? (
                     <div className="flex w-8 flex-col-reverse rounded-t-md overflow-hidden" style={{ height: maxH }}>
-                      <div className="bg-emerald-400" style={{ height: `${(day.normal / 18) * maxH}px` }} />
-                      <div className="bg-amber-400" style={{ height: `${(day.retardo / 18) * maxH}px` }} />
-                      <div className="bg-red-400" style={{ height: `${(day.falta / 18) * maxH}px` }} />
-                      <div className="bg-blue-400" style={{ height: `${(day.permiso / 18) * maxH}px` }} />
+                      <div className="bg-emerald-400" style={{ height: `${(day.normal / maxTotal) * maxH}px` }} />
+                      <div className="bg-amber-400" style={{ height: `${(day.retardo / maxTotal) * maxH}px` }} />
+                      <div className="bg-red-400" style={{ height: `${(day.falta / maxTotal) * maxH}px` }} />
+                      <div className="bg-blue-400" style={{ height: `${(day.permiso / maxTotal) * maxH}px` }} />
                     </div>
                   ) : (
                     <div className="flex h-full items-end">
@@ -264,52 +317,60 @@ export default function AsistenciaPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((record) => {
-                const tc = tipoConfig[record.tipo]
-                const TipoIcon = tc.icon
-                return (
-                  <tr key={record.id} className="border-b border-[#F0EDE8] hover:bg-[#FAF9F7] transition-colors">
-                    <td className="px-5 py-3 font-medium text-[#1E1A14]">{record.empleado}</td>
-                    <td className="px-5 py-3 text-[#7A6D5A] capitalize">{record.role.replace("_", " ")}</td>
-                    <td className="px-5 py-3">
-                      {record.horaEntrada ? (
-                        <span className="inline-flex items-center gap-1 text-[#1E1A14]">
-                          <Clock className="h-3 w-3 text-[#7A6D5A]" />
-                          {record.horaEntrada}
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-5 py-12 text-center text-sm text-[#7A6D5A]">
+                    Sin registros para esta fecha
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((record) => {
+                  const tc = tipoConfig[record.tipo]
+                  const TipoIcon = tc.icon
+                  return (
+                    <tr key={record.id} className="border-b border-[#F0EDE8] hover:bg-[#FAF9F7] transition-colors">
+                      <td className="px-5 py-3 font-medium text-[#1E1A14]">{record.empleado}</td>
+                      <td className="px-5 py-3 text-[#7A6D5A] capitalize">{record.role.replace("_", " ")}</td>
+                      <td className="px-5 py-3">
+                        {record.horaEntrada ? (
+                          <span className="inline-flex items-center gap-1 text-[#1E1A14]">
+                            <Clock className="h-3 w-3 text-[#7A6D5A]" />
+                            {record.horaEntrada}
+                          </span>
+                        ) : (
+                          <span className="text-[#7A6D5A]">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        {record.horaSalida ? (
+                          <span className="inline-flex items-center gap-1 text-[#1E1A14]">
+                            <Clock className="h-3 w-3 text-[#7A6D5A]" />
+                            {record.horaSalida}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#7A6D5A]">En turno</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${tc.color}`}>
+                          <TipoIcon className="h-3 w-3" />
+                          {tc.label}
                         </span>
-                      ) : (
-                        <span className="text-[#7A6D5A]">—</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      {record.horaSalida ? (
-                        <span className="inline-flex items-center gap-1 text-[#1E1A14]">
-                          <Clock className="h-3 w-3 text-[#7A6D5A]" />
-                          {record.horaSalida}
+                      </td>
+                      <td className="px-5 py-3">
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                          record.registradoEn === "planta"
+                            ? "bg-stone-100 text-stone-700"
+                            : "bg-indigo-100 text-indigo-700"
+                        }`}>
+                          {record.registradoEn === "planta" ? "Planta" : "Obra"}
                         </span>
-                      ) : (
-                        <span className="text-xs text-[#7A6D5A]">En turno</span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${tc.color}`}>
-                        <TipoIcon className="h-3 w-3" />
-                        {tc.label}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        record.registradoEn === "planta"
-                          ? "bg-stone-100 text-stone-700"
-                          : "bg-indigo-100 text-indigo-700"
-                      }`}>
-                        {record.registradoEn === "planta" ? "Planta" : "Obra"}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3 text-[#7A6D5A]">{record.obraAsignada ?? "—"}</td>
-                  </tr>
-                )
-              })}
+                      </td>
+                      <td className="px-5 py-3 text-[#7A6D5A]">{record.obraAsignada ?? "—"}</td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>

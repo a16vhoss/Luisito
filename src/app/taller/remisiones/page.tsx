@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, useEffect } from "react"
 import Link from "next/link"
 import {
   ArrowLeft,
@@ -12,71 +12,10 @@ import {
   Clock,
   Truck,
   MapPin,
+  Loader2,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-
-const mockRemisiones = [
-  {
-    id: "1",
-    folio: "REM #29441",
-    obra: "Torre Lujo - Etapa 4",
-    material: "Calacatta Gold",
-    lote: "LOT-2024-089",
-    piezas: 12,
-    m2: 34.5,
-    estatus: "en_transito" as const,
-    fecha: "19 Mar 2026",
-    chofer: "Rodrigo García",
-  },
-  {
-    id: "2",
-    folio: "REM #29440",
-    obra: "Torre Lujo - Etapa 4",
-    material: "Nero Marquina",
-    lote: "LOT-2024-088",
-    piezas: 8,
-    m2: 22.1,
-    estatus: "entregada" as const,
-    fecha: "19 Mar 2026",
-    chofer: "Rodrigo García",
-  },
-  {
-    id: "3",
-    folio: "REM #29439",
-    obra: "Residencial Playa",
-    material: "Blanco Carrara",
-    lote: "LOT-2024-087",
-    piezas: 15,
-    m2: 41.8,
-    estatus: "creada" as const,
-    fecha: "18 Mar 2026",
-    chofer: "Sin asignar",
-  },
-  {
-    id: "4",
-    folio: "REM #29438",
-    obra: "Hotel Grand Paradise",
-    material: "Emperador Dark",
-    lote: "LOT-2024-086",
-    piezas: 6,
-    m2: 18.2,
-    estatus: "entregada" as const,
-    fecha: "18 Mar 2026",
-    chofer: "Miguel Torres",
-  },
-  {
-    id: "5",
-    folio: "REM #29437",
-    obra: "Residencial Playa",
-    material: "Travertino Navona",
-    lote: "LOT-2024-085",
-    piezas: 20,
-    m2: 58.0,
-    estatus: "entregada" as const,
-    fecha: "17 Mar 2026",
-    chofer: "Rodrigo García",
-  },
-]
+import { createClient } from "@/lib/supabase/client"
 
 const estatusConfig = {
   creada: { label: "CREADA", color: "bg-marble-200 text-marble-600" },
@@ -86,15 +25,55 @@ const estatusConfig = {
 
 type FilterType = "todas" | "creada" | "en_transito" | "entregada"
 
+interface RemisionRow {
+  id: string
+  folio: string
+  estatus: "creada" | "en_transito" | "entregada"
+  notas: string | null
+  created_at: string
+  obra: { nombre: string } | null
+  chofer: { nombre: string } | null
+  items: { cantidad: number }[]
+}
+
 export default function RemisionesPage() {
   const [filter, setFilter] = useState<FilterType>("todas")
   const [search, setSearch] = useState("")
+  const [remisiones, setRemisiones] = useState<RemisionRow[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const filtered = mockRemisiones.filter((r) => {
+  useEffect(() => {
+    async function fetchRemisiones() {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("remisiones")
+        .select("*, obra:obras(nombre), chofer:users!chofer_id(nombre), items:remision_items(cantidad)")
+        .order("created_at", { ascending: false })
+
+      if (!error && data) {
+        setRemisiones(data as RemisionRow[])
+      }
+      setLoading(false)
+    }
+
+    fetchRemisiones()
+  }, [])
+
+  const filtered = remisiones.filter((r) => {
     if (filter !== "todas" && r.estatus !== filter) return false
-    if (search && !r.folio.toLowerCase().includes(search.toLowerCase()) && !r.material.toLowerCase().includes(search.toLowerCase())) return false
+    if (search) {
+      const q = search.toLowerCase()
+      const matchesFolio = r.folio?.toLowerCase().includes(q)
+      const matchesObra = r.obra?.nombre?.toLowerCase().includes(q)
+      if (!matchesFolio && !matchesObra) return false
+    }
     return true
   })
+
+  const formatDate = (dateStr: string) => {
+    const d = new Date(dateStr)
+    return d.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF9F7]">
@@ -106,7 +85,9 @@ export default function RemisionesPage() {
           </Link>
           <div className="flex-1">
             <h1 className="text-lg font-bold text-white">Remisiones</h1>
-            <p className="text-xs text-marble-400">{mockRemisiones.length} registros</p>
+            <p className="text-xs text-marble-400">
+              {loading ? "Cargando..." : `${remisiones.length} registros`}
+            </p>
           </div>
           <Link
             href="/taller/remisiones/nueva"
@@ -120,7 +101,7 @@ export default function RemisionesPage() {
         <div className="relative mt-4">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-marble-500" />
           <Input
-            placeholder="Buscar por folio o material..."
+            placeholder="Buscar por folio u obra..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="h-10 rounded-xl border-marble-700 bg-marble-900 pl-9 text-sm text-white placeholder:text-marble-500 focus:border-golden focus:ring-golden"
@@ -151,52 +132,64 @@ export default function RemisionesPage() {
           ))}
         </div>
 
-        {/* List */}
-        <div className="space-y-2">
-          {filtered.map((rem) => {
-            const status = estatusConfig[rem.estatus]
-            return (
-              <div
-                key={rem.id}
-                className="rounded-xl border border-marble-200 bg-white p-4 shadow-sm active:bg-marble-50 transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-bold text-marble-900">{rem.folio}</p>
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.color}`}>
-                        {status.label}
+        {/* Loading */}
+        {loading ? (
+          <div className="mt-12 flex flex-col items-center justify-center">
+            <Loader2 className="h-8 w-8 animate-spin text-marble-400" />
+            <p className="mt-3 text-sm text-marble-400">Cargando remisiones...</p>
+          </div>
+        ) : (
+          <>
+            {/* List */}
+            <div className="space-y-2">
+              {filtered.map((rem) => {
+                const status = estatusConfig[rem.estatus] ?? estatusConfig.creada
+                const totalPiezas = rem.items?.reduce((sum, i) => sum + i.cantidad, 0) ?? 0
+                return (
+                  <div
+                    key={rem.id}
+                    className="rounded-xl border border-marble-200 bg-white p-4 shadow-sm active:bg-marble-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-marble-900">{rem.folio || "Sin folio"}</p>
+                          <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${status.color}`}>
+                            {status.label}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-sm font-medium text-marble-700">
+                          {rem.obra?.nombre ?? "Sin obra"}
+                        </p>
+                      </div>
+                      <ChevronRight className="h-5 w-5 text-marble-300 mt-0.5 shrink-0" />
+                    </div>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-marble-100 pt-2 text-[11px] text-marble-400">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" /> {rem.obra?.nombre ?? "—"}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Package className="h-3 w-3" /> {totalPiezas} pzas
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Truck className="h-3 w-3" /> {rem.chofer?.nombre ?? "Sin asignar"}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" /> {formatDate(rem.created_at)}
                       </span>
                     </div>
-                    <p className="mt-1 text-sm font-medium text-marble-700">{rem.material}</p>
-                    <p className="text-xs text-marble-400">{rem.lote}</p>
                   </div>
-                  <ChevronRight className="h-5 w-5 text-marble-300 mt-0.5 shrink-0" />
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-marble-100 pt-2 text-[11px] text-marble-400">
-                  <span className="flex items-center gap-1">
-                    <MapPin className="h-3 w-3" /> {rem.obra}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Package className="h-3 w-3" /> {rem.piezas} pzas &middot; {rem.m2} m²
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Truck className="h-3 w-3" /> {rem.chofer}
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-3 w-3" /> {rem.fecha}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+                )
+              })}
+            </div>
 
-        {filtered.length === 0 && (
-          <div className="mt-12 text-center">
-            <Package className="mx-auto h-10 w-10 text-marble-300" />
-            <p className="mt-2 text-sm text-marble-400">No se encontraron remisiones</p>
-          </div>
+            {filtered.length === 0 && (
+              <div className="mt-12 text-center">
+                <Package className="mx-auto h-10 w-10 text-marble-300" />
+                <p className="mt-2 text-sm text-marble-400">No se encontraron remisiones</p>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
