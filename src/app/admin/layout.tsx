@@ -12,6 +12,7 @@ import {
   BoxSelect,
   Scissors,
   BarChart3,
+  HardHat,
   ChevronLeft,
   ChevronRight,
   Bell,
@@ -21,6 +22,7 @@ import {
 
 const sidebarLinks = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/obras", label: "Obras", icon: HardHat },
   { href: "/admin/almacen", label: "Almacén", icon: Warehouse },
   { href: "/admin/compras", label: "Compras", icon: ShoppingCart },
   { href: "/admin/inventario", label: "Inventario", icon: PackageSearch },
