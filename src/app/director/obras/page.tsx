@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -14,136 +15,93 @@ import {
 } from "@/components/ui/table"
 import {
   Plus,
-  Filter,
   Search,
   ArrowUpRight,
   MapPin,
   Calendar,
-  HardHat,
+  Loader2,
 } from "lucide-react"
-import { useState } from "react"
+import { createClient } from "@/lib/supabase/client"
+import type { Obra, ObraEstatus } from "@/types/database.types"
 
-const obras = [
-  {
-    id: "OBR-001",
-    nombre: "Residencia \"Las Nubes\"",
-    cliente: "Arq. Roberto Medina",
-    ubicacion: "Mérida, Yuc.",
-    tipo: "Residencial",
-    fechaInicio: "2026-01-15",
-    fechaEntrega: "2026-04-30",
-    presupuesto: "$485,000",
-    avance: 93,
-    status: "A Tiempo",
-    color: "#22C55E",
-    piezas: "42/45",
-    m2: "120 m²",
-  },
-  {
-    id: "OBR-002",
-    nombre: "Hotel Regency Lobby",
-    cliente: "Grupo Hotelero del Sureste",
-    ubicacion: "Cancún, Q.R.",
-    tipo: "Hospitalidad",
-    fechaInicio: "2025-11-01",
-    fechaEntrega: "2026-05-15",
-    presupuesto: "$1,250,000",
-    avance: 65,
-    status: "En Riesgo",
-    color: "#F59E0B",
-    piezas: "78/120",
-    m2: "340 m²",
-  },
-  {
-    id: "OBR-003",
-    nombre: "Torre Corporate VII",
-    cliente: "Inmobiliaria Peninsular",
-    ubicacion: "Mérida, Yuc.",
-    tipo: "Corporativo",
-    fechaInicio: "2026-02-01",
-    fechaEntrega: "2026-08-30",
-    presupuesto: "$2,100,000",
-    avance: 39,
-    status: "Crítico",
-    color: "#EF4444",
-    piezas: "35/90",
-    m2: "580 m²",
-  },
-  {
-    id: "OBR-004",
-    nombre: "Plaza Kukulcán",
-    cliente: "Desarrollos Peninsulares S.A.",
-    ubicacion: "Mérida, Yuc.",
-    tipo: "Comercial",
-    fechaInicio: "2025-10-15",
-    fechaEntrega: "2026-04-15",
-    presupuesto: "$890,000",
-    avance: 87,
-    status: "A Tiempo",
-    color: "#22C55E",
-    piezas: "156/180",
-    m2: "450 m²",
-  },
-  {
-    id: "OBR-005",
-    nombre: "Residencia Montejo 480",
-    cliente: "Familia Cámara Zavala",
-    ubicacion: "Mérida, Yuc.",
-    tipo: "Residencial",
-    fechaInicio: "2026-01-20",
-    fechaEntrega: "2026-05-20",
-    presupuesto: "$320,000",
-    avance: 73,
-    status: "En Riesgo",
-    color: "#F59E0B",
-    piezas: "22/30",
-    m2: "85 m²",
-  },
-  {
-    id: "OBR-006",
-    nombre: "Club de Playa Sisal",
-    cliente: "Inmuebles Costeros del Golfo",
-    ubicacion: "Sisal, Yuc.",
-    tipo: "Hospitalidad",
-    fechaInicio: "2026-03-01",
-    fechaEntrega: "2026-09-30",
-    presupuesto: "$1,750,000",
-    avance: 12,
-    status: "A Tiempo",
-    color: "#22C55E",
-    piezas: "8/65",
-    m2: "720 m²",
-  },
-  {
-    id: "OBR-007",
-    nombre: "Departamentos Altabrisa",
-    cliente: "Grupo Inmobiliario VIVA",
-    ubicacion: "Mérida, Yuc.",
-    tipo: "Residencial",
-    fechaInicio: "2026-02-10",
-    fechaEntrega: "2026-07-15",
-    presupuesto: "$560,000",
-    avance: 45,
-    status: "A Tiempo",
-    color: "#22C55E",
-    piezas: "30/66",
-    m2: "200 m²",
-  },
-]
+const statusLabels: Record<ObraEstatus, string> = {
+  activa: "Activa",
+  pausada: "Pausada",
+  completada: "Completada",
+  cancelada: "Cancelada",
+}
 
-const statusColors: Record<string, string> = {
-  "A Tiempo": "bg-emerald-100 text-emerald-700",
-  "En Riesgo": "bg-amber-100 text-amber-700",
-  "Crítico": "bg-red-100 text-red-700",
+const statusColors: Record<ObraEstatus, string> = {
+  activa: "bg-emerald-100 text-emerald-700",
+  pausada: "bg-amber-100 text-amber-700",
+  completada: "bg-blue-100 text-blue-700",
+  cancelada: "bg-red-100 text-red-700",
+}
+
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 0,
+  }).format(amount)
+}
+
+function formatDate(iso: string | null) {
+  if (!iso) return "—"
+  return new Date(iso).toLocaleDateString("es-MX", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
 }
 
 export default function ObrasPage() {
+  const [obras, setObras] = useState<Obra[]>([])
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<string>("Todas")
+  const [searchTerm, setSearchTerm] = useState("")
 
-  const filteredObras =
-    filter === "Todas"
-      ? obras
-      : obras.filter((o) => o.status === filter)
+  useEffect(() => {
+    async function fetchObras() {
+      const supabase = createClient()
+      const { data, error } = await supabase
+        .from("obras")
+        .select("*")
+        .order("created_at", { ascending: false })
+
+      if (!error && data) {
+        setObras(data as Obra[])
+      }
+      setLoading(false)
+    }
+    fetchObras()
+  }, [])
+
+  const filteredObras = obras.filter((o) => {
+    if (filter === "Activas" && o.estatus !== "activa") return false
+    if (filter === "Pausadas" && o.estatus !== "pausada") return false
+    if (filter === "Completadas" && o.estatus !== "completada") return false
+    if (filter === "Canceladas" && o.estatus !== "cancelada") return false
+    if (
+      searchTerm &&
+      !o.nombre.toLowerCase().includes(searchTerm.toLowerCase()) &&
+      !o.cliente.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+      return false
+    return true
+  })
+
+  const totalActivas = obras.filter((o) => o.estatus === "activa").length
+  const totalPausadas = obras.filter((o) => o.estatus === "pausada").length
+  const totalCompletadas = obras.filter((o) => o.estatus === "completada").length
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -152,7 +110,7 @@ export default function ObrasPage() {
         <div>
           <h1 className="text-2xl font-bold text-[#1E1A14]">Obras</h1>
           <p className="mt-1 text-sm text-[#7A6D5A]">
-            {obras.length} obras registradas &bull; {obras.filter((o) => o.status !== "Completada").length} activas
+            {obras.length} obras registradas &bull; {totalActivas} activas
           </p>
         </div>
         <Link href="/director/obras/nueva">
@@ -166,36 +124,17 @@ export default function ObrasPage() {
       {/* Summary Cards */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: "Total Obras", value: obras.length, bg: "bg-[#FAF9F7]" },
-          {
-            label: "A Tiempo",
-            value: obras.filter((o) => o.status === "A Tiempo").length,
-            bg: "bg-emerald-50",
-            dot: "#22C55E",
-          },
-          {
-            label: "En Riesgo",
-            value: obras.filter((o) => o.status === "En Riesgo").length,
-            bg: "bg-amber-50",
-            dot: "#F59E0B",
-          },
-          {
-            label: "Crítico",
-            value: obras.filter((o) => o.status === "Crítico").length,
-            bg: "bg-red-50",
-            dot: "#EF4444",
-          },
+          { label: "Total Obras", filterKey: "Todas", value: obras.length, dot: undefined },
+          { label: "Activas", filterKey: "Activas", value: totalActivas, dot: "#22C55E" },
+          { label: "Pausadas", filterKey: "Pausadas", value: totalPausadas, dot: "#F59E0B" },
+          { label: "Completadas", filterKey: "Completadas", value: totalCompletadas, dot: "#3B82F6" },
         ].map((s) => (
           <Card
             key={s.label}
             className={`cursor-pointer border transition-shadow hover:shadow-md ${
-              filter === s.label || (filter === "Todas" && s.label === "Total Obras")
-                ? "ring-2 ring-[#D4A843]"
-                : ""
+              filter === s.filterKey ? "ring-2 ring-[#D4A843]" : ""
             }`}
-            onClick={() =>
-              setFilter(s.label === "Total Obras" ? "Todas" : s.label)
-            }
+            onClick={() => setFilter(s.filterKey)}
           >
             <CardContent className="flex items-center gap-3 p-4">
               {s.dot && (
@@ -218,19 +157,15 @@ export default function ObrasPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Listado de Obras</CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7A6D5A]" />
-                <input
-                  type="text"
-                  placeholder="Buscar obra..."
-                  className="h-8 w-56 rounded-lg border border-[#E0DBD1] bg-[#FAF9F7] pl-8 pr-3 text-xs focus:border-[#D4A843] focus:outline-none"
-                />
-              </div>
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Filter className="h-3.5 w-3.5" />
-                Filtrar
-              </Button>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7A6D5A]" />
+              <input
+                type="text"
+                placeholder="Buscar obra..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="h-8 w-56 rounded-lg border border-[#E0DBD1] bg-[#FAF9F7] pl-8 pr-3 text-xs focus:border-[#D4A843] focus:outline-none"
+              />
             </div>
           </div>
         </CardHeader>
@@ -238,23 +173,19 @@ export default function ObrasPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[60px]">ID</TableHead>
                 <TableHead>Obra</TableHead>
                 <TableHead>Cliente</TableHead>
-                <TableHead>Ubicación</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Presupuesto</TableHead>
-                <TableHead>Avance</TableHead>
-                <TableHead>Status</TableHead>
+                <TableHead>Ubicaci&oacute;n</TableHead>
+                <TableHead className="text-right">Contrato</TableHead>
+                <TableHead>Inicio</TableHead>
+                <TableHead>Entrega est.</TableHead>
+                <TableHead>Estatus</TableHead>
                 <TableHead className="w-[40px]" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredObras.map((obra) => (
                 <TableRow key={obra.id} className="group">
-                  <TableCell className="text-xs font-mono text-[#7A6D5A]">
-                    {obra.id}
-                  </TableCell>
                   <TableCell>
                     <Link
                       href={`/director/obras/${obra.id}`}
@@ -262,40 +193,33 @@ export default function ObrasPage() {
                     >
                       {obra.nombre}
                     </Link>
-                    <p className="text-[10px] text-[#7A6D5A]">{obra.piezas} pzas &bull; {obra.m2}</p>
                   </TableCell>
                   <TableCell className="text-sm">{obra.cliente}</TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-[#7A6D5A]">
-                      <MapPin className="h-3 w-3" />
-                      {obra.ubicacion}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-[10px]">
-                      {obra.tipo}
-                    </Badge>
+                    {obra.ubicacion ? (
+                      <div className="flex items-center gap-1 text-sm text-[#7A6D5A]">
+                        <MapPin className="h-3 w-3" />
+                        {obra.ubicacion}
+                      </div>
+                    ) : (
+                      <span className="text-[#7A6D5A]">—</span>
+                    )}
                   </TableCell>
                   <TableCell className="text-right text-sm font-medium">
-                    {obra.presupuesto}
+                    {formatCurrency(obra.contrato_total)}
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-16 rounded-full bg-[#F0EDE8]">
-                        <div
-                          className="h-1.5 rounded-full"
-                          style={{
-                            width: `${obra.avance}%`,
-                            backgroundColor: obra.color,
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs font-medium">{obra.avance}%</span>
+                  <TableCell className="text-sm text-[#7A6D5A] whitespace-nowrap">
+                    <div className="flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
+                      {formatDate(obra.fecha_inicio)}
                     </div>
                   </TableCell>
+                  <TableCell className="text-sm text-[#7A6D5A] whitespace-nowrap">
+                    {formatDate(obra.fecha_fin_estimada)}
+                  </TableCell>
                   <TableCell>
-                    <Badge className={statusColors[obra.status] + " text-[10px]"}>
-                      {obra.status}
+                    <Badge className={statusColors[obra.estatus] + " text-[10px]"}>
+                      {statusLabels[obra.estatus]}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -305,6 +229,15 @@ export default function ObrasPage() {
                   </TableCell>
                 </TableRow>
               ))}
+              {filteredObras.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={8} className="py-12 text-center text-sm text-[#7A6D5A]">
+                    {obras.length === 0
+                      ? "No hay obras registradas. Crea tu primera obra."
+                      : "No se encontraron obras con los filtros seleccionados."}
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
