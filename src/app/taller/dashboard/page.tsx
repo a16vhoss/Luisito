@@ -15,12 +15,12 @@ import {
   Truck,
 } from "lucide-react"
 
-const mockRemisiones = [
+const remisionesRecientes = [
   {
     id: "1",
     folio: "REM #29441",
     material: "Calacatta Gold",
-    lote: "LOT-2024-089",
+    lote: "LOT-2026-089",
     piezas: 12,
     m2: 34.5,
     estatus: "en_transito" as const,
@@ -30,7 +30,7 @@ const mockRemisiones = [
     id: "2",
     folio: "REM #29440",
     material: "Nero Marquina",
-    lote: "LOT-2024-088",
+    lote: "LOT-2026-088",
     piezas: 8,
     m2: 22.1,
     estatus: "entregada" as const,
@@ -40,7 +40,7 @@ const mockRemisiones = [
     id: "3",
     folio: "REM #29439",
     material: "Blanco Carrara",
-    lote: "LOT-2024-087",
+    lote: "LOT-2026-087",
     piezas: 15,
     m2: 41.8,
     estatus: "creada" as const,
@@ -50,7 +50,7 @@ const mockRemisiones = [
     id: "4",
     folio: "REM #29438",
     material: "Emperador Dark",
-    lote: "LOT-2024-086",
+    lote: "LOT-2026-086",
     piezas: 6,
     m2: 18.2,
     estatus: "entregada" as const,
@@ -157,7 +157,7 @@ export default function TallerDashboardPage() {
           </div>
 
           <div className="space-y-2">
-            {mockRemisiones.map((rem) => {
+            {remisionesRecientes.map((rem) => {
               const status = estatusConfig[rem.estatus]
               return (
                 <div

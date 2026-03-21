@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-// ── Mock data ──
+// ── Datos ──
 type FaltaRecord = {
   id: string
   empleado: string
@@ -29,26 +29,23 @@ type FaltaRecord = {
   motivo: string | null
 }
 
-const mockFaltas: FaltaRecord[] = [
-  { id: "1", empleado: "Ricardo Torres", role: "marmolero", tipo: "falta", fecha: "2026-03-19", horaEntrada: null, horaEsperada: "07:00", minutosRetardo: null, justificado: false, motivo: null },
-  { id: "2", empleado: "José García", role: "marmolero", tipo: "retardo", fecha: "2026-03-19", horaEntrada: "07:15", horaEsperada: "07:00", minutosRetardo: 15, justificado: false, motivo: null },
-  { id: "3", empleado: "Ricardo Torres", role: "marmolero", tipo: "retardo", fecha: "2026-03-18", horaEntrada: "07:20", horaEsperada: "07:00", minutosRetardo: 20, justificado: false, motivo: null },
-  { id: "4", empleado: "Pedro Ramírez", role: "marmolero", tipo: "falta", fecha: "2026-03-17", horaEntrada: null, horaEsperada: "07:00", minutosRetardo: null, justificado: true, motivo: "Cita médica" },
-  { id: "5", empleado: "José García", role: "marmolero", tipo: "retardo", fecha: "2026-03-17", horaEntrada: "07:10", horaEsperada: "07:00", minutosRetardo: 10, justificado: false, motivo: null },
-  { id: "6", empleado: "Miguel Ángel Santos", role: "chofer", tipo: "falta", fecha: "2026-03-14", horaEntrada: null, horaEsperada: "06:30", minutosRetardo: null, justificado: false, motivo: null },
-  { id: "7", empleado: "Ricardo Torres", role: "marmolero", tipo: "retardo", fecha: "2026-03-14", horaEntrada: "07:25", horaEsperada: "07:00", minutosRetardo: 25, justificado: false, motivo: null },
-  { id: "8", empleado: "Juan Pérez", role: "chofer", tipo: "retardo", fecha: "2026-03-13", horaEntrada: "07:05", horaEsperada: "07:00", minutosRetardo: 5, justificado: true, motivo: "Tráfico por accidente" },
-  { id: "9", empleado: "Pedro Ramírez", role: "marmolero", tipo: "retardo", fecha: "2026-03-12", horaEntrada: "07:12", horaEsperada: "07:00", minutosRetardo: 12, justificado: false, motivo: null },
-  { id: "10", empleado: "Ricardo Torres", role: "marmolero", tipo: "falta", fecha: "2026-03-10", horaEntrada: null, horaEsperada: "07:00", minutosRetardo: null, justificado: false, motivo: null },
+const incidencias: FaltaRecord[] = [
+  { id: "1", empleado: "Ricardo Alejandro May Uc", role: "marmolero", tipo: "retardo", fecha: "2026-03-20", horaEntrada: "07:18", horaEsperada: "07:00", minutosRetardo: 18, justificado: false, motivo: null },
+  { id: "2", empleado: "José Luis Chi Pech", role: "marmolero", tipo: "retardo", fecha: "2026-03-20", horaEntrada: "07:12", horaEsperada: "07:00", minutosRetardo: 12, justificado: false, motivo: null },
+  { id: "3", empleado: "Fernando Euán Couoh", role: "marmolero", tipo: "falta", fecha: "2026-03-20", horaEntrada: null, horaEsperada: "07:00", minutosRetardo: null, justificado: true, motivo: "Enfermedad gastrointestinal" },
+  { id: "4", empleado: "Ricardo Alejandro May Uc", role: "marmolero", tipo: "retardo", fecha: "2026-03-19", horaEntrada: "07:22", horaEsperada: "07:00", minutosRetardo: 22, justificado: false, motivo: null },
+  { id: "5", empleado: "Ricardo Alejandro May Uc", role: "marmolero", tipo: "retardo", fecha: "2026-03-17", horaEntrada: "07:15", horaEsperada: "07:00", minutosRetardo: 15, justificado: false, motivo: null },
+  { id: "6", empleado: "José Luis Chi Pech", role: "marmolero", tipo: "retardo", fecha: "2026-03-16", horaEntrada: "07:08", horaEsperada: "07:00", minutosRetardo: 8, justificado: false, motivo: null },
+  { id: "7", empleado: "Ricardo Alejandro May Uc", role: "marmolero", tipo: "falta", fecha: "2026-03-12", horaEntrada: null, horaEsperada: "07:00", minutosRetardo: null, justificado: false, motivo: null },
+  { id: "8", empleado: "Ernesto Pool Canché", role: "chofer", tipo: "retardo", fecha: "2026-03-11", horaEntrada: "06:52", horaEsperada: "06:30", minutosRetardo: 22, justificado: true, motivo: "Tráfico por obra en periférico" },
 ]
 
-// Employee ranking by incidents
-const employeeRanking = [
-  { nombre: "Ricardo Torres", faltas: 2, retardos: 3, total: 5 },
-  { nombre: "José García", faltas: 0, retardos: 2, total: 2 },
-  { nombre: "Pedro Ramírez", faltas: 1, retardos: 1, total: 2 },
-  { nombre: "Miguel Ángel Santos", faltas: 1, retardos: 0, total: 1 },
-  { nombre: "Juan Pérez", faltas: 0, retardos: 1, total: 1 },
+// Ranking de incidencias por empleado
+const rankingIncidencias = [
+  { nombre: "Ricardo Alejandro May Uc", faltas: 1, retardos: 3, total: 4 },
+  { nombre: "José Luis Chi Pech", faltas: 0, retardos: 2, total: 2 },
+  { nombre: "Fernando Euán Couoh", faltas: 1, retardos: 0, total: 1 },
+  { nombre: "Ernesto Pool Canché", faltas: 0, retardos: 1, total: 1 },
 ]
 
 export default function FaltasPage() {
@@ -57,15 +54,15 @@ export default function FaltasPage() {
   const [filterTipo, setFilterTipo] = useState<string>("todos")
   const [filterPeriodo, setFilterPeriodo] = useState("mes")
 
-  const filtered = mockFaltas.filter((f) => {
+  const filtered = incidencias.filter((f) => {
     if (filterTipo !== "todos" && f.tipo !== filterTipo) return false
     if (searchTerm && !f.empleado.toLowerCase().includes(searchTerm.toLowerCase())) return false
     return true
   })
 
-  const totalFaltas = mockFaltas.filter((f) => f.tipo === "falta").length
-  const totalRetardos = mockFaltas.filter((f) => f.tipo === "retardo").length
-  const sinJustificar = mockFaltas.filter((f) => !f.justificado).length
+  const totalFaltas = incidencias.filter((f) => f.tipo === "falta").length
+  const totalRetardos = incidencias.filter((f) => f.tipo === "retardo").length
+  const sinJustificar = incidencias.filter((f) => !f.justificado).length
 
   return (
     <div className="space-y-6">
@@ -134,7 +131,7 @@ export default function FaltasPage() {
             </div>
             <div>
               <p className="text-xs text-[#7A6D5A]">Total Incidencias</p>
-              <p className="text-xl font-bold text-[#1E1A14]">{mockFaltas.length}</p>
+              <p className="text-xl font-bold text-[#1E1A14]">{incidencias.length}</p>
             </div>
           </div>
         </div>
@@ -265,7 +262,7 @@ export default function FaltasPage() {
             <p className="text-xs text-[#7A6D5A]">Empleados con más faltas/retardos</p>
           </div>
           <div className="divide-y divide-[#F0EDE8]">
-            {employeeRanking.map((emp, i) => (
+            {rankingIncidencias.map((emp, i) => (
               <div key={emp.nombre} className="flex items-center gap-3 px-5 py-4">
                 <div
                   className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${

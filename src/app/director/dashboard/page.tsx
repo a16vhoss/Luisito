@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-  Users,
   HardHat,
   Truck,
   FileText,
@@ -13,16 +12,14 @@ import {
   Plus,
   Download,
   Factory,
-  MapPin,
   Building2,
   ArrowUpRight,
-  ArrowDownRight,
   Package,
   DollarSign,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-// ---------- MOCK DATA ----------
+// ── Datos ──
 const asistencia = {
   presentes: 44,
   total: 52,
@@ -116,7 +113,7 @@ const m2Semanal = {
   ],
 }
 
-// ---------- COMPONENT ----------
+// ── Componente ──
 export default function DashboardPage() {
   const { toast } = useToast()
   const maxBar = Math.max(...m2Semanal.dias.map((d) => d.valor))

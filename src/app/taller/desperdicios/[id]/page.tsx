@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { mockDesperdicios } from "@/lib/desperdicios-mock"
+import { desperdiciosDemo } from "@/lib/desperdicios-mock"
 
 const calidadConfig = {
   buena: { label: "Buena", color: "bg-semaforo-verde/15 text-semaforo-verde" },
@@ -29,7 +29,7 @@ export default function DetalleDesperdicioPage() {
   const { toast } = useToast()
   const id = params.id as string
 
-  const desperdicio = mockDesperdicios.find((d) => d.id === id)
+  const desperdicio = desperdiciosDemo.find((d) => d.id === id)
 
   if (!desperdicio) {
     return (

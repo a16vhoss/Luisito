@@ -1,8 +1,8 @@
 import type { Desperdicio } from "@/types/database.types"
 
-// ── Mock Data ──────────────────────────────────────────────────────────────────
+// ── Datos de demostración ──────────────────────────────────────────────────────
 
-export const mockDesperdicios: Desperdicio[] = [
+export const desperdiciosDemo: Desperdicio[] = [
   {
     id: "d-001",
     tipo_material: "Calacatta Gold",
@@ -196,7 +196,7 @@ export interface ResultadoBusqueda {
 
 export function buscarDesperdicioCompatible(
   params: BusquedaParams,
-  desperdicios: Desperdicio[] = mockDesperdicios
+  desperdicios: Desperdicio[] = desperdiciosDemo
 ): ResultadoBusqueda[] {
   const { largoCm, anchoCm, tipoMaterial } = params
   const areaPieza = largoCm * anchoCm

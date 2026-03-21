@@ -16,7 +16,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
-// ── Mock data ──
+// ── Datos ──
 type AttendanceRecord = {
   id: string
   empleado: string
@@ -36,38 +36,59 @@ const tipoConfig: Record<string, { label: string; color: string; icon: typeof Us
   permiso: { label: "Permiso", color: "bg-blue-100 text-blue-700", icon: AlertCircle },
 }
 
-const mockAttendance: AttendanceRecord[] = [
-  { id: "1", empleado: "Pedro Ramírez", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "2", empleado: "José García", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:15", horaSalida: null, tipo: "retardo", registradoEn: "planta", obraAsignada: null },
-  { id: "3", empleado: "Ricardo Torres", role: "marmolero", fecha: "2026-03-19", horaEntrada: null, horaSalida: null, tipo: "falta", registradoEn: "planta", obraAsignada: null },
-  { id: "4", empleado: "Miguel Ángel Santos", role: "chofer", fecha: "2026-03-19", horaEntrada: "06:45", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "5", empleado: "Juan Pérez", role: "chofer", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "6", empleado: "Carlos Herrera", role: "residente", fecha: "2026-03-19", horaEntrada: "07:30", horaSalida: null, tipo: "normal", registradoEn: "obra", obraAsignada: "Torre Esmeralda" },
-  { id: "7", empleado: "Fernando López", role: "residente", fecha: "2026-03-19", horaEntrada: null, horaSalida: null, tipo: "permiso", registradoEn: "obra", obraAsignada: "Residencial Las Palmas" },
-  { id: "8", empleado: "Roberto Méndez", role: "jefe_taller", fecha: "2026-03-19", horaEntrada: "06:50", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  // Previous day
-  { id: "9", empleado: "Pedro Ramírez", role: "marmolero", fecha: "2026-03-18", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "10", empleado: "José García", role: "marmolero", fecha: "2026-03-18", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
-  { id: "11", empleado: "Ricardo Torres", role: "marmolero", fecha: "2026-03-18", horaEntrada: "07:20", horaSalida: "16:00", tipo: "retardo", registradoEn: "planta", obraAsignada: null },
-  { id: "12", empleado: "Miguel Ángel Santos", role: "chofer", fecha: "2026-03-18", horaEntrada: "06:45", horaSalida: "17:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+const registrosAsistencia: AttendanceRecord[] = [
+  // ── Viernes 20 de marzo 2026 (hoy) ──
+  { id: "1", empleado: "Roberto Méndez Solís", role: "jefe_taller", fecha: "2026-03-20", horaEntrada: "06:50", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "2", empleado: "Miguel Ángel Tun Canul", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:00", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "3", empleado: "José Luis Chi Pech", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:12", horaSalida: null, tipo: "retardo", registradoEn: "planta", obraAsignada: null },
+  { id: "4", empleado: "Ricardo Alejandro May Uc", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:18", horaSalida: null, tipo: "retardo", registradoEn: "planta", obraAsignada: null },
+  { id: "5", empleado: "Luis Enrique Balam Pool", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:00", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "6", empleado: "Armando Nah Dzib", role: "marmolero", fecha: "2026-03-20", horaEntrada: "06:58", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "7", empleado: "Jorge Iván Caamal Ku", role: "marmolero", fecha: "2026-03-20", horaEntrada: "07:00", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "8", empleado: "Fernando Euán Couoh", role: "marmolero", fecha: "2026-03-20", horaEntrada: null, horaSalida: null, tipo: "falta", registradoEn: "planta", obraAsignada: null },
+  { id: "9", empleado: "Juan Carlos Canul May", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:30", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "10", empleado: "Pedro Antonio Pech Dzul", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:40", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "11", empleado: "Ernesto Pool Canché", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:35", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "12", empleado: "Marco Antonio Dzib Ek", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:45", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "13", empleado: "Wilberth Chan Mis", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:42", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "14", empleado: "Gaspar Tuyub Noh", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:38", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "15", empleado: "Ángel Hau Cauich", role: "chofer", fecha: "2026-03-20", horaEntrada: "06:45", horaSalida: null, tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "16", empleado: "Carlos Herrera Góngora", role: "residente", fecha: "2026-03-20", horaEntrada: "07:30", horaSalida: null, tipo: "normal", registradoEn: "obra", obraAsignada: "Residencia Las Nubes" },
+  { id: "17", empleado: "Fernando López Cetina", role: "residente", fecha: "2026-03-20", horaEntrada: "07:45", horaSalida: null, tipo: "normal", registradoEn: "obra", obraAsignada: "Hotel Regency Cancún" },
+  { id: "18", empleado: "Carlos Alberto Pérez Novelo", role: "residente", fecha: "2026-03-20", horaEntrada: "07:15", horaSalida: null, tipo: "normal", registradoEn: "obra", obraAsignada: "Torre Corporate VII" },
+  // ── Jueves 19 de marzo 2026 (ayer) ──
+  { id: "19", empleado: "Roberto Méndez Solís", role: "jefe_taller", fecha: "2026-03-19", horaEntrada: "06:48", horaSalida: "16:30", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "20", empleado: "Miguel Ángel Tun Canul", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "21", empleado: "José Luis Chi Pech", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "22", empleado: "Ricardo Alejandro May Uc", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:22", horaSalida: "16:00", tipo: "retardo", registradoEn: "planta", obraAsignada: null },
+  { id: "23", empleado: "Luis Enrique Balam Pool", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "24", empleado: "Armando Nah Dzib", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:01", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "25", empleado: "Jorge Iván Caamal Ku", role: "marmolero", fecha: "2026-03-19", horaEntrada: "06:58", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "26", empleado: "Fernando Euán Couoh", role: "marmolero", fecha: "2026-03-19", horaEntrada: "07:00", horaSalida: "16:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "27", empleado: "Juan Carlos Canul May", role: "chofer", fecha: "2026-03-19", horaEntrada: "06:30", horaSalida: "17:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "28", empleado: "Pedro Antonio Pech Dzul", role: "chofer", fecha: "2026-03-19", horaEntrada: "06:35", horaSalida: "17:00", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "29", empleado: "Ernesto Pool Canché", role: "chofer", fecha: "2026-03-19", horaEntrada: "06:40", horaSalida: "16:30", tipo: "normal", registradoEn: "planta", obraAsignada: null },
+  { id: "30", empleado: "Carlos Herrera Góngora", role: "residente", fecha: "2026-03-19", horaEntrada: "07:20", horaSalida: "17:30", tipo: "normal", registradoEn: "obra", obraAsignada: "Residencia Las Nubes" },
+  { id: "31", empleado: "Carlos Alberto Pérez Novelo", role: "residente", fecha: "2026-03-19", horaEntrada: "07:10", horaSalida: "17:00", tipo: "normal", registradoEn: "obra", obraAsignada: "Torre Corporate VII" },
+  { id: "32", empleado: "Fernando López Cetina", role: "residente", fecha: "2026-03-19", horaEntrada: null, horaSalida: null, tipo: "permiso", registradoEn: "obra", obraAsignada: "Hotel Regency Cancún" },
 ]
 
-// Weekly summary
-const weeklySummary = [
-  { dia: "Lun 17", normal: 9, retardo: 1, falta: 0, permiso: 1 },
-  { dia: "Mar 18", normal: 8, retardo: 1, falta: 1, permiso: 1 },
-  { dia: "Mié 19", normal: 5, retardo: 1, falta: 1, permiso: 1 },
-  { dia: "Jue 20", normal: 0, retardo: 0, falta: 0, permiso: 0 },
-  { dia: "Vie 21", normal: 0, retardo: 0, falta: 0, permiso: 0 },
+// Resumen semanal
+const resumenSemanal = [
+  { dia: "Lun 16", normal: 16, retardo: 1, falta: 0, permiso: 1 },
+  { dia: "Mar 17", normal: 15, retardo: 2, falta: 1, permiso: 0 },
+  { dia: "Mié 18", normal: 16, retardo: 1, falta: 0, permiso: 1 },
+  { dia: "Jue 19", normal: 14, retardo: 1, falta: 0, permiso: 1 },
+  { dia: "Vie 20", normal: 14, retardo: 2, falta: 1, permiso: 0 },
 ]
 
 export default function AsistenciaPage() {
   const { toast } = useToast()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterTipo, setFilterTipo] = useState<string>("todos")
-  const [selectedDate, setSelectedDate] = useState("2026-03-19")
+  const [selectedDate, setSelectedDate] = useState("2026-03-20")
 
-  const filtered = mockAttendance.filter((a) => {
+  const filtered = registrosAsistencia.filter((a) => {
     if (a.fecha !== selectedDate) return false
     if (filterTipo !== "todos" && a.tipo !== filterTipo) return false
     if (searchTerm && !a.empleado.toLowerCase().includes(searchTerm.toLowerCase())) return false
@@ -75,11 +96,11 @@ export default function AsistenciaPage() {
   })
 
   const todayStats = {
-    total: mockAttendance.filter((a) => a.fecha === selectedDate).length,
-    normal: mockAttendance.filter((a) => a.fecha === selectedDate && a.tipo === "normal").length,
-    retardo: mockAttendance.filter((a) => a.fecha === selectedDate && a.tipo === "retardo").length,
-    falta: mockAttendance.filter((a) => a.fecha === selectedDate && a.tipo === "falta").length,
-    permiso: mockAttendance.filter((a) => a.fecha === selectedDate && a.tipo === "permiso").length,
+    total: registrosAsistencia.filter((a) => a.fecha === selectedDate).length,
+    normal: registrosAsistencia.filter((a) => a.fecha === selectedDate && a.tipo === "normal").length,
+    retardo: registrosAsistencia.filter((a) => a.fecha === selectedDate && a.tipo === "retardo").length,
+    falta: registrosAsistencia.filter((a) => a.fecha === selectedDate && a.tipo === "falta").length,
+    permiso: registrosAsistencia.filter((a) => a.fecha === selectedDate && a.tipo === "permiso").length,
   }
 
   return (
@@ -105,8 +126,8 @@ export default function AsistenciaPage() {
               <ChevronLeft className="h-4 w-4" />
             </button>
             <div className="text-center">
-              <p className="text-sm font-semibold text-[#1E1A14]">Miércoles</p>
-              <p className="text-2xl font-bold text-[#D4A843]">19</p>
+              <p className="text-sm font-semibold text-[#1E1A14]">Viernes</p>
+              <p className="text-2xl font-bold text-[#D4A843]">20</p>
               <p className="text-xs text-[#7A6D5A]">Marzo 2026</p>
             </div>
             <button className="rounded-md p-1 text-[#7A6D5A] hover:bg-[#F0EDE8]">
@@ -166,7 +187,7 @@ export default function AsistenciaPage() {
       <div className="rounded-xl border border-[#E0DBD1] bg-white p-5">
         <h2 className="mb-4 font-semibold text-[#1E1A14]">Resumen Semanal</h2>
         <div className="flex items-end gap-4">
-          {weeklySummary.map((day) => {
+          {resumenSemanal.map((day) => {
             const total = day.normal + day.retardo + day.falta + day.permiso
             const maxH = 80
             return (
@@ -174,10 +195,10 @@ export default function AsistenciaPage() {
                 <div className="flex w-full flex-col items-center" style={{ height: maxH }}>
                   {total > 0 ? (
                     <div className="flex w-8 flex-col-reverse rounded-t-md overflow-hidden" style={{ height: maxH }}>
-                      <div className="bg-emerald-400" style={{ height: `${(day.normal / 11) * maxH}px` }} />
-                      <div className="bg-amber-400" style={{ height: `${(day.retardo / 11) * maxH}px` }} />
-                      <div className="bg-red-400" style={{ height: `${(day.falta / 11) * maxH}px` }} />
-                      <div className="bg-blue-400" style={{ height: `${(day.permiso / 11) * maxH}px` }} />
+                      <div className="bg-emerald-400" style={{ height: `${(day.normal / 18) * maxH}px` }} />
+                      <div className="bg-amber-400" style={{ height: `${(day.retardo / 18) * maxH}px` }} />
+                      <div className="bg-red-400" style={{ height: `${(day.falta / 18) * maxH}px` }} />
+                      <div className="bg-blue-400" style={{ height: `${(day.permiso / 18) * maxH}px` }} />
                     </div>
                   ) : (
                     <div className="flex h-full items-end">

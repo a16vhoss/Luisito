@@ -13,7 +13,7 @@ import {
   AlertTriangle,
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
-import { mockDesperdicios } from "@/lib/desperdicios-mock"
+import { desperdiciosDemo } from "@/lib/desperdicios-mock"
 
 const calidadConfig = {
   buena: { label: "BUENA", color: "bg-semaforo-verde/15 text-semaforo-verde" },
@@ -27,7 +27,7 @@ export default function DesperdiciosPage() {
   const [filter, setFilter] = useState<FilterType>("todos")
   const [search, setSearch] = useState("")
 
-  const filtered = mockDesperdicios.filter((d) => {
+  const filtered = desperdiciosDemo.filter((d) => {
     if (filter === "disponibles" && !d.disponible) return false
     if (filter === "usados" && d.disponible) return false
     if (
@@ -39,9 +39,9 @@ export default function DesperdiciosPage() {
     return true
   })
 
-  const disponibles = mockDesperdicios.filter((d) => d.disponible).length
-  const usados = mockDesperdicios.filter((d) => !d.disponible).length
-  const totalM2 = mockDesperdicios
+  const disponibles = desperdiciosDemo.filter((d) => d.disponible).length
+  const usados = desperdiciosDemo.filter((d) => !d.disponible).length
+  const totalM2 = desperdiciosDemo
     .filter((d) => d.disponible)
     .reduce((sum, d) => sum + (d.largo_cm * d.ancho_cm) / 10000, 0)
 

@@ -11,7 +11,7 @@ import {
   Clock,
 } from "lucide-react"
 
-// ── Mock data ──
+// ── Datos ──
 const summaryCards = [
   {
     title: "Total Materiales",

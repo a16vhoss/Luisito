@@ -16,7 +16,7 @@ import {
   MoreHorizontal,
 } from "lucide-react"
 
-// ── Mock data ──
+// ── Datos ──
 type OrdenCompra = {
   id: string
   folio: string
@@ -30,7 +30,7 @@ type OrdenCompra = {
   notas: string
 }
 
-const mockOrdenes: OrdenCompra[] = [
+const ordenes: OrdenCompra[] = [
   { id: "1", folio: "OC-2026-00034", proveedor: "Mármoles del Sureste", estatus: "pendiente", total: 84500, items: 3, creadoPor: "Laura Castro", aprobadoPor: null, fecha: "2026-03-18", notas: "Láminas para Torre Esmeralda" },
   { id: "2", folio: "OC-2026-00033", proveedor: "Insumos Industriales MX", estatus: "aprobada", total: 12300, items: 5, creadoPor: "Laura Castro", aprobadoPor: "Andrée Hossfeldt", fecha: "2026-03-17", notas: "Insumos varios para taller" },
   { id: "3", folio: "OC-2026-00032", proveedor: "Herramientas ProCut", estatus: "recibida", total: 45000, items: 2, creadoPor: "Laura Castro", aprobadoPor: "Andrée Hossfeldt", fecha: "2026-03-15", notas: "Discos de corte y pulidoras" },
@@ -63,7 +63,7 @@ export default function ComprasPage() {
   const [filterEstatus, setFilterEstatus] = useState<string>("todos")
   const [searchTerm, setSearchTerm] = useState("")
 
-  const filtered = mockOrdenes.filter((o) => {
+  const filtered = ordenes.filter((o) => {
     if (filterEstatus !== "todos" && o.estatus !== filterEstatus) return false
     if (searchTerm) {
       const q = searchTerm.toLowerCase()
@@ -196,7 +196,7 @@ export default function ComprasPage() {
           </table>
         </div>
         <div className="flex items-center justify-between border-t border-[#E0DBD1] px-5 py-3">
-          <p className="text-xs text-[#7A6D5A]">Mostrando {filtered.length} de {mockOrdenes.length} órdenes</p>
+          <p className="text-xs text-[#7A6D5A]">Mostrando {filtered.length} de {ordenes.length} órdenes</p>
           <div className="flex items-center gap-1">
             <button className="rounded-md border border-[#E0DBD1] px-3 py-1 text-xs text-[#7A6D5A] hover:bg-[#F0EDE8]">Anterior</button>
             <button className="rounded-md bg-[#1E1A14] px-3 py-1 text-xs text-white">1</button>
