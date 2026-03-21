@@ -1,6 +1,7 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,88 +29,104 @@ import {
   AlertTriangle,
   Download,
   Camera,
+  Loader2,
 } from "lucide-react"
+import { createClient } from "@/lib/supabase/client"
+import type { Obra, ObraEstatus } from "@/types/database.types"
 
-// Mock obra detail
-const obraDetail = {
-  id: "OBR-001",
-  nombre: "Residencia \"Las Nubes\"",
-  cliente: "Arq. Roberto Medina",
-  clienteTel: "+52 999 123 4567",
-  ubicacion: "Calle 60 #480, Col. Centro, Mérida, Yucatán",
-  tipo: "Residencial",
-  fechaInicio: "15 Ene 2026",
-  fechaEntrega: "30 Abr 2026",
-  presupuesto: "$485,000 MXN",
-  avance: 93,
-  status: "A Tiempo",
-  color: "#22C55E",
-  descripcion:
-    "Instalación de pisos y revestimientos de mármol Carrara en cocina, 3 baños y escalera principal. Incluye cortes especiales y acabado pulido.",
-  responsable: "Ing. Carlos Pérez",
-  piezas: { entregadas: 42, total: 45, enProceso: 3 },
-  m2Instalados: 108,
-  m2Total: 120,
+const statusLabels: Record<ObraEstatus, string> = {
+  activa: "Activa",
+  pausada: "Pausada",
+  completada: "Completada",
+  cancelada: "Cancelada",
 }
 
-const remisiones = [
-  {
-    id: "REM-0142",
-    fecha: "18 Mar 2026",
-    material: "Carrara White 60x60",
-    cantidad: "12 pzas",
-    chofer: "Juan Canul",
-    status: "Entregada",
-  },
-  {
-    id: "REM-0138",
-    fecha: "15 Mar 2026",
-    material: "Carrara White 30x60",
-    cantidad: "8 pzas",
-    chofer: "Pedro Pech",
-    status: "Entregada",
-  },
-  {
-    id: "REM-0135",
-    fecha: "12 Mar 2026",
-    material: "Carrara White Escalera",
-    cantidad: "6 pzas",
-    chofer: "Juan Canul",
-    status: "Entregada",
-  },
-  {
-    id: "REM-0150",
-    fecha: "20 Mar 2026",
-    material: "Carrara White 60x60",
-    cantidad: "3 pzas",
-    chofer: "Pedro Pech",
-    status: "En Tránsito",
-  },
-]
+const statusColors: Record<ObraEstatus, string> = {
+  activa: "#22C55E",
+  pausada: "#F59E0B",
+  completada: "#3B82F6",
+  cancelada: "#EF4444",
+}
 
-const personal = [
-  { nombre: "Miguel Ángel Tun", rol: "Instalador Senior", status: "En obra", horas: "8h" },
-  { nombre: "José Luis Chi", rol: "Instalador", status: "En obra", horas: "8h" },
-  { nombre: "Ricardo May", rol: "Ayudante", status: "En obra", horas: "6h" },
-]
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    minimumFractionDigits: 0,
+  }).format(amount)
+}
 
-const timeline = [
-  { fecha: "18 Mar", evento: "Entrega parcial: 12 piezas Carrara 60x60", tipo: "entrega" },
-  { fecha: "17 Mar", evento: "Inspección de calidad aprobada - Baño principal", tipo: "check" },
-  { fecha: "15 Mar", evento: "Instalación completada - Cocina", tipo: "check" },
-  { fecha: "12 Mar", evento: "Retraso menor por lluvia - 1 día", tipo: "alerta" },
-  { fecha: "10 Mar", evento: "Inicio fase 3: Escalera principal", tipo: "evento" },
-]
+function formatDate(iso: string | null) {
+  if (!iso) return "—"
+  return new Date(iso).toLocaleDateString("es-MX", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
+}
 
 export default function ObraDetailPage() {
   const params = useParams()
+  const obraId = params.id as string
+
+  const [obra, setObra] = useState<Obra | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function fetchObra() {
+      const supabase = createClient()
+      const { data, error: fetchError } = await supabase
+        .from("obras")
+        .select("*")
+        .eq("id", obraId)
+        .single()
+
+      if (fetchError) {
+        setError("No se pudo cargar la obra.")
+      } else {
+        setObra(data as Obra)
+      }
+      setLoading(false)
+    }
+    if (obraId) fetchObra()
+  }, [obraId])
+
+  if (loading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[#D4A843]" />
+      </div>
+    )
+  }
+
+  if (error || !obra) {
+    return (
+      <div className="space-y-4">
+        <Link
+          href="/director/obras"
+          className="inline-flex items-center gap-1.5 text-sm text-[#7A6D5A] hover:text-[#1E1A14]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver a Obras
+        </Link>
+        <div className="flex h-48 items-center justify-center rounded-xl border border-[#E0DBD1] bg-white">
+          <p className="text-sm text-[#7A6D5A]">{error ?? "Obra no encontrada."}</p>
+        </div>
+      </div>
+    )
+  }
+
+  const color = statusColors[obra.estatus]
+  const anticipoMonto = obra.contrato_total * (obra.anticipo_porcentaje / 100)
+  const retencionMonto = obra.contrato_total * (obra.retencion_porcentaje / 100)
 
   return (
     <div className="space-y-6">
       {/* Back + Header */}
       <div>
         <Link
-          href="/obras"
+          href="/director/obras"
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-[#7A6D5A] hover:text-[#1E1A14]"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -118,20 +135,17 @@ export default function ObraDetailPage() {
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-[#1E1A14]">{obraDetail.nombre}</h1>
+              <h1 className="text-2xl font-bold text-[#1E1A14]">{obra.nombre}</h1>
               <Badge
                 className="text-xs"
                 style={{
-                  backgroundColor: `${obraDetail.color}20`,
-                  color: obraDetail.color,
+                  backgroundColor: `${color}20`,
+                  color: color,
                 }}
               >
-                {obraDetail.status}
+                {statusLabels[obra.estatus]}
               </Badge>
             </div>
-            <p className="mt-1 text-sm text-[#7A6D5A]">
-              {obraDetail.id} &bull; {obraDetail.tipo}
-            </p>
           </div>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="gap-1.5">
@@ -154,8 +168,7 @@ export default function ObraDetailPage() {
               <User className="h-4 w-4" />
               <span className="text-xs">Cliente</span>
             </div>
-            <p className="mt-1 text-sm font-semibold text-[#1E1A14]">{obraDetail.cliente}</p>
-            <p className="text-xs text-[#7A6D5A]">{obraDetail.clienteTel}</p>
+            <p className="mt-1 text-sm font-semibold text-[#1E1A14]">{obra.cliente}</p>
           </CardContent>
         </Card>
         <Card>
@@ -164,7 +177,9 @@ export default function ObraDetailPage() {
               <MapPin className="h-4 w-4" />
               <span className="text-xs">Ubicación</span>
             </div>
-            <p className="mt-1 text-sm font-semibold text-[#1E1A14]">{obraDetail.ubicacion}</p>
+            <p className="mt-1 text-sm font-semibold text-[#1E1A14]">
+              {obra.ubicacion ?? "Sin especificar"}
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -174,7 +189,7 @@ export default function ObraDetailPage() {
               <span className="text-xs">Fechas</span>
             </div>
             <p className="mt-1 text-sm font-semibold text-[#1E1A14]">
-              {obraDetail.fechaInicio} - {obraDetail.fechaEntrega}
+              {formatDate(obra.fecha_inicio)} - {formatDate(obra.fecha_fin_estimada)}
             </p>
           </CardContent>
         </Card>
@@ -182,161 +197,95 @@ export default function ObraDetailPage() {
           <CardContent className="p-4">
             <div className="flex items-center gap-2 text-[#7A6D5A]">
               <FileText className="h-4 w-4" />
-              <span className="text-xs">Presupuesto</span>
+              <span className="text-xs">Contrato</span>
             </div>
-            <p className="mt-1 text-sm font-semibold text-[#1E1A14]">{obraDetail.presupuesto}</p>
-            <p className="text-xs text-[#7A6D5A]">Resp: {obraDetail.responsable}</p>
+            <p className="mt-1 text-sm font-semibold text-[#1E1A14]">
+              {formatCurrency(obra.contrato_total)}
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Progress + Description */}
+      {/* Financial Details + Notes */}
       <div className="grid grid-cols-3 gap-6">
         <Card className="col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Descripción del Proyecto</CardTitle>
+            <CardTitle className="text-base">Detalles del Contrato</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-[#7A6D5A] leading-relaxed">{obraDetail.descripcion}</p>
-            <div className="mt-4 grid grid-cols-3 gap-4">
+            {obra.notas && (
+              <p className="mb-4 text-sm text-[#7A6D5A] leading-relaxed">{obra.notas}</p>
+            )}
+            <div className="grid grid-cols-3 gap-4">
               <div className="rounded-lg bg-[#FAF9F7] p-3 text-center">
                 <p className="text-2xl font-bold text-[#1E1A14]">
-                  {obraDetail.piezas.entregadas}/{obraDetail.piezas.total}
+                  {obra.anticipo_porcentaje}%
                 </p>
-                <p className="text-xs text-[#7A6D5A]">Piezas Entregadas</p>
+                <p className="text-xs text-[#7A6D5A]">Anticipo</p>
+                <p className="mt-0.5 text-xs font-medium text-[#D4A843]">
+                  {formatCurrency(anticipoMonto)}
+                </p>
               </div>
               <div className="rounded-lg bg-[#FAF9F7] p-3 text-center">
                 <p className="text-2xl font-bold text-[#1E1A14]">
-                  {obraDetail.m2Instalados}/{obraDetail.m2Total}
+                  {formatCurrency(obra.anticipo_recibido)}
                 </p>
-                <p className="text-xs text-[#7A6D5A]">m² Instalados</p>
+                <p className="text-xs text-[#7A6D5A]">Anticipo Recibido</p>
               </div>
               <div className="rounded-lg bg-[#FAF9F7] p-3 text-center">
-                <p className="text-2xl font-bold text-[#1E1A14]">{obraDetail.avance}%</p>
-                <p className="text-xs text-[#7A6D5A]">Avance General</p>
+                <p className="text-2xl font-bold text-[#1E1A14]">
+                  {obra.retencion_porcentaje}%
+                </p>
+                <p className="text-xs text-[#7A6D5A]">Retención</p>
+                <p className="mt-0.5 text-xs font-medium text-[#7A6D5A]">
+                  {formatCurrency(retencionMonto)}
+                </p>
               </div>
-            </div>
-            <div className="mt-3 h-2 w-full rounded-full bg-[#F0EDE8]">
-              <div
-                className="h-2 rounded-full"
-                style={{
-                  width: `${obraDetail.avance}%`,
-                  backgroundColor: obraDetail.color,
-                }}
-              />
             </div>
           </CardContent>
         </Card>
 
-        {/* Timeline */}
+        {/* Timeline / Info */}
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Actividad Reciente</CardTitle>
+            <CardTitle className="text-base">Información</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {timeline.map((item, i) => (
-                <div key={i} className="flex gap-3">
-                  <div className="flex flex-col items-center">
-                    {item.tipo === "check" ? (
-                      <CheckCircle2 className="h-4 w-4 text-[#22C55E]" />
-                    ) : item.tipo === "alerta" ? (
-                      <AlertTriangle className="h-4 w-4 text-[#F59E0B]" />
-                    ) : item.tipo === "entrega" ? (
-                      <Truck className="h-4 w-4 text-[#D4A843]" />
-                    ) : (
-                      <Clock className="h-4 w-4 text-[#7A6D5A]" />
-                    )}
-                    {i < timeline.length - 1 && (
-                      <div className="mt-1 h-full w-px bg-[#E0DBD1]" />
-                    )}
-                  </div>
-                  <div className="pb-3">
-                    <p className="text-xs font-medium text-[#1E1A14]">{item.evento}</p>
-                    <p className="text-[10px] text-[#7A6D5A]">{item.fecha}</p>
-                  </div>
-                </div>
-              ))}
+              <div>
+                <p className="text-xs text-[#7A6D5A]">Estatus</p>
+                <Badge
+                  className="mt-1 text-xs"
+                  style={{
+                    backgroundColor: `${color}20`,
+                    color: color,
+                  }}
+                >
+                  {statusLabels[obra.estatus]}
+                </Badge>
+              </div>
+              <div>
+                <p className="text-xs text-[#7A6D5A]">Fecha de Inicio</p>
+                <p className="text-sm font-medium text-[#1E1A14]">
+                  {formatDate(obra.fecha_inicio)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-[#7A6D5A]">Entrega Estimada</p>
+                <p className="text-sm font-medium text-[#1E1A14]">
+                  {formatDate(obra.fecha_fin_estimada)}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-[#7A6D5A]">Creada</p>
+                <p className="text-sm font-medium text-[#1E1A14]">
+                  {formatDate(obra.created_at)}
+                </p>
+              </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Tabs: Remisiones / Personal */}
-      <Tabs defaultValue="remisiones">
-        <TabsList>
-          <TabsTrigger value="remisiones">Remisiones</TabsTrigger>
-          <TabsTrigger value="personal">Personal Asignado</TabsTrigger>
-        </TabsList>
-        <TabsContent value="remisiones">
-          <Card>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Remisión</TableHead>
-                    <TableHead>Fecha</TableHead>
-                    <TableHead>Material</TableHead>
-                    <TableHead>Cantidad</TableHead>
-                    <TableHead>Chofer</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {remisiones.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="font-mono text-xs">{r.id}</TableCell>
-                      <TableCell className="text-sm">{r.fecha}</TableCell>
-                      <TableCell className="text-sm">{r.material}</TableCell>
-                      <TableCell className="text-sm">{r.cantidad}</TableCell>
-                      <TableCell className="text-sm">{r.chofer}</TableCell>
-                      <TableCell>
-                        <Badge
-                          className={
-                            r.status === "Entregada"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-blue-100 text-blue-700"
-                          }
-                        >
-                          {r.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-        <TabsContent value="personal">
-          <Card>
-            <CardContent className="pt-6">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nombre</TableHead>
-                    <TableHead>Rol</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Horas Hoy</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {personal.map((p) => (
-                    <TableRow key={p.nombre}>
-                      <TableCell className="font-medium">{p.nombre}</TableCell>
-                      <TableCell className="text-sm">{p.rol}</TableCell>
-                      <TableCell>
-                        <Badge className="bg-emerald-100 text-emerald-700">{p.status}</Badge>
-                      </TableCell>
-                      <TableCell className="text-sm">{p.horas}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   )
 }
